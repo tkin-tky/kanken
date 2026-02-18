@@ -1,0 +1,1042 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>四字熟語・一字穴埋め（10問）</title>
+  <style>
+    :root{
+      --w: 1200;
+      --h: 2400;
+
+      /* 漢字ゲーム風（和紙＋墨＋判子っぽい） */
+      --paper1: #f4efe6;
+      --paper2: #efe7d8;
+      --ink: rgba(10,10,14,0.90);
+
+      --panel: rgba(255,255,255,0.70);
+      --panelBorder: rgba(0,0,0,0.10);
+      --text: rgba(10,10,14,0.92);
+      --muted: rgba(10,10,14,0.62);
+
+      /* カラフルアイコン用 */
+      --c1: #ff4d6d;  /* 朱 */
+      --c2: #ffa62b;  /* 山吹 */
+      --c3: #2ec4b6;  /* 青緑 */
+      --c4: #3a86ff;  /* 青 */
+      --c5: #8338ec;  /* 紫 */
+      --c6: #06d6a0;  /* 緑 */
+      --good: #06d6a0;
+      --bad: #ff4d6d;
+    }
+
+    *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+    html, body{
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden; /* スクロール禁止 */
+      font-family: ui-sans-serif, system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", "Yu Gothic", "Meiryo", sans-serif;
+      touch-action: manipulation;
+      background: var(--paper1);
+      color: var(--text);
+    }
+
+    /* 1200x2400 を画面に収めるスケーリング枠 */
+    #stage-wrap{
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+
+    /* === 背景グラフィックス（漢字ゲームっぽい絵） === */
+    #stage{
+      width: calc(var(--w) * 1px);
+      height: calc(var(--h) * 1px);
+      transform-origin: top left;
+      border-radius: 48px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.25);
+
+      /* ★変更：背景を back.jpg に（最背面レイヤーとして差し替え） */
+      background:
+        url('back.jpg') center / cover no-repeat,
+        /* 判子風スタンプ */
+        radial-gradient(220px 220px at 86% 16%, rgba(255,77,109,0.12), transparent 62%),
+        radial-gradient(260px 260px at 88% 18%, rgba(255,77,109,0.10), transparent 64%),
+        /* 薄い墨にじみ */
+        radial-gradient(900px 900px at 18% 28%, rgba(10,10,14,0.10), transparent 60%),
+        radial-gradient(700px 700px at 78% 78%, rgba(10,10,14,0.08), transparent 62%),
+        /* 原稿用紙風の罫線 */
+        linear-gradient(0deg, rgba(0,0,0,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+      background-size:
+        cover,
+        auto, auto,
+        auto, auto,
+        64px 64px,
+        64px 64px;
+      background-position:
+        center,
+        center, center,
+        center, center,
+        0 0,
+        0 0;
+    }
+
+    /* 巨大な薄墨「漢」「字」など（擬似要素で描画） */
+    #stage::before{
+      content: "漢\n字\n遊\n戯";
+      white-space: pre;
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      font-size: 260px;
+      line-height: 1.05;
+      letter-spacing: 0.14em;
+      color: rgba(10,10,14,0.08);
+      transform: rotate(-8deg);
+      filter: blur(0.2px);
+      pointer-events: none;
+    }
+    #stage::after{
+      /* ★変更：背景側のタイトル表記も合わせる（薄墨） */
+      content: "四字熟語を答えよう！";
+      position: absolute;
+      left: 70px;
+      top: 120px;
+      font-weight: 900;
+      font-size: 120px;
+      letter-spacing: 0.18em;
+      color: rgba(10,10,14,0.07);
+      transform: rotate(3deg);
+      pointer-events: none;
+    }
+
+    .pad{ padding: 56px; position: relative; z-index: 1; }
+
+    .topbar{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap: 24px;
+      margin-bottom: 28px;
+    }
+    .brand{
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+    }
+    .brand h1{
+      font-size: 54px;
+      margin: 0;
+      letter-spacing: 0.06em;
+      line-height: 1.1;
+    }
+    .brand .sub{
+      font-size: 28px;
+      color: var(--muted);
+    }
+
+    .stats{
+      display:flex;
+      gap: 18px;
+      align-items:stretch;
+    }
+
+    /* カラフル化：ステータス“アイコン”風カード */
+    .pill{
+      min-width: 220px;
+      background: rgba(255,255,255,0.75);
+      border: 1px solid var(--panelBorder);
+      border-radius: 26px;
+      padding: 18px 20px;
+      display:flex;
+      flex-direction:column;
+      gap: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+    .pill::before{
+      content:"";
+      position:absolute;
+      left:-40px;
+      top:-40px;
+      width: 120px;
+      height: 120px;
+      border-radius: 40px;
+      background: rgba(58,134,255,0.18);
+      transform: rotate(18deg);
+    }
+    .pill:nth-child(2)::before{ background: rgba(255,166,43,0.18); }
+    .pill .k{ font-size: 22px; color: var(--muted); letter-spacing: 0.04em; position:relative; }
+    .pill .v{ font-size: 40px; font-weight: 800; letter-spacing: 0.03em; position:relative; }
+
+    .panel{
+      background: rgba(255,255,255,0.74);
+      border: 1px solid var(--panelBorder);
+      border-radius: 36px;
+      padding: 36px;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.08);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+
+    .controls{
+      display:flex;
+      gap: 18px;
+      align-items:center;
+      flex-wrap: wrap;
+    }
+
+    /* カラフル化：ボタン（アイコン含む） */
+    .btn{
+      border: 1px solid rgba(0,0,0,0.10);
+      background: rgba(255,255,255,0.65);
+      color: var(--text);
+      border-radius: 28px;
+      padding: 18px 22px;
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      user-select:none;
+      box-shadow: 0 12px 26px rgba(0,0,0,0.10);
+    }
+    .btn:active{ transform: translateY(1px); }
+
+    .btn.primary{
+      background: linear-gradient(135deg, rgba(58,134,255,0.26), rgba(46,196,182,0.18));
+      border-color: rgba(58,134,255,0.28);
+    }
+    .btn.good{
+      background: linear-gradient(135deg, rgba(6,214,160,0.26), rgba(255,166,43,0.16));
+      border-color: rgba(6,214,160,0.30);
+    }
+    .btn.warn{
+      background: linear-gradient(135deg, rgba(255,77,109,0.22), rgba(131,56,236,0.16));
+      border-color: rgba(255,77,109,0.28);
+    }
+
+    .select{
+      appearance:none;
+      border: 1px solid rgba(0,0,0,0.12);
+      background: rgba(255,255,255,0.70);
+      color: var(--text);
+      border-radius: 24px;
+      padding: 16px 18px;
+      font-size: 28px;
+      min-width: 300px;
+      outline:none;
+      box-shadow: 0 10px 22px rgba(0,0,0,0.08);
+    }
+
+    .qarea{
+      display:grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 28px;
+      margin-top: 24px;
+    }
+
+    .question-box{
+      display:flex;
+      flex-direction:column;
+      gap: 26px;
+      min-height: 980px;
+    }
+
+    .qmeta{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap: 18px;
+    }
+    .qmeta .left{
+      display:flex;
+      flex-direction:column;
+      gap: 8px;
+    }
+    .qmeta .left .title{
+      font-size: 34px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+    }
+    .qmeta .left .desc{
+      font-size: 26px;
+      color: var(--muted);
+    }
+
+    .timer{
+      display:flex;
+      flex-direction:column;
+      align-items:flex-end;
+      gap: 10px;
+    }
+    .timer .time{
+      font-size: 56px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      color: rgba(10,10,14,0.90);
+    }
+    .timer .hint{
+      font-size: 22px;
+      color: var(--muted);
+    }
+
+    .idiom{
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      gap: 22px;
+      margin-top: 20px;
+      padding: 34px 20px;
+      border-radius: 34px;
+      background: rgba(255,255,255,0.55);
+      border: 1px solid rgba(0,0,0,0.08);
+    }
+    .cell{
+      width: 170px;
+      height: 170px;
+      display:grid;
+      place-items:center;
+      border-radius: 26px;
+      font-size: 92px;
+      font-weight: 950;
+      background: rgba(255,255,255,0.80);
+      border: 1px solid rgba(0,0,0,0.10);
+      user-select:none;
+      box-shadow: 0 10px 22px rgba(0,0,0,0.10);
+    }
+    .blank{
+      background: rgba(58,134,255,0.12);
+      border: 2px dashed rgba(58,134,255,0.55);
+      color: rgba(10,10,14,0.45);
+      font-weight: 950;
+    }
+
+    .choices{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 18px;
+    }
+    .choice{
+      height: 160px;
+      border-radius: 34px;
+      font-size: 72px;
+      font-weight: 950;
+      background: rgba(255,255,255,0.78);
+      border: 1px solid rgba(0,0,0,0.10);
+      color: var(--text);
+      cursor: pointer;
+      user-select:none;
+      display:grid;
+      place-items:center;
+      box-shadow: 0 12px 26px rgba(0,0,0,0.10);
+      position: relative;
+      overflow: hidden;
+    }
+    .choice::before{
+      content:"";
+      position:absolute;
+      left:-26px;
+      top:-26px;
+      width: 120px;
+      height: 120px;
+      border-radius: 40px;
+      background: rgba(255,77,109,0.20);
+      transform: rotate(20deg);
+    }
+    #ch1::before{ background: rgba(255,166,43,0.20); }
+    #ch2::before{ background: rgba(46,196,182,0.20); }
+    #ch3::before{ background: rgba(131,56,236,0.18); }
+
+    .choice:active{ transform: translateY(2px); }
+
+    .choice.good{ outline: 4px solid rgba(6,214,160,0.40); }
+    .choice.bad{ outline: 4px solid rgba(255,77,109,0.36); }
+
+    .feedback{
+      margin-top: 14px;
+      min-height: 72px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size: 34px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+    }
+
+    .side{
+      display:flex;
+      flex-direction:column;
+      gap: 24px;
+      min-height: 980px;
+    }
+
+    .progress{
+      display:flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding-top: 8px;
+    }
+    .dot{
+      width: 46px;
+      height: 46px;
+      border-radius: 18px;
+      border: 1px solid rgba(0,0,0,0.12);
+      background: rgba(255,255,255,0.70);
+      display:grid;
+      place-items:center;
+      font-size: 22px;
+      color: rgba(10,10,14,0.55);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.08);
+    }
+    .dot.done{
+      background: rgba(6,214,160,0.22);
+      border-color: rgba(6,214,160,0.32);
+      color: rgba(10,10,14,0.75);
+    }
+    .dot.bad{
+      background: rgba(255,77,109,0.20);
+      border-color: rgba(255,77,109,0.30);
+      color: rgba(10,10,14,0.75);
+    }
+    .dot.now{
+      background: rgba(58,134,255,0.22);
+      border-color: rgba(58,134,255,0.32);
+      color: rgba(10,10,14,0.82);
+    }
+
+    .log{
+      background: rgba(255,255,255,0.72);
+      border: 1px solid rgba(0,0,0,0.10);
+      border-radius: 28px;
+      padding: 22px;
+      min-height: 520px;
+      overflow: hidden;
+      box-shadow: 0 16px 34px rgba(0,0,0,0.08);
+    }
+    .log h3{
+      margin: 0 0 12px 0;
+      font-size: 28px;
+      letter-spacing: 0.03em;
+      color: rgba(10,10,14,0.85);
+    }
+    .log .line{
+      font-size: 24px;
+      color: rgba(10,10,14,0.62);
+      line-height: 1.55;
+      padding: 6px 0;
+      border-bottom: 1px dashed rgba(0,0,0,0.10);
+    }
+    .log .line:last-child{ border-bottom: none; }
+
+    .footer{
+      position:absolute;
+      left: 56px;
+      right: 56px;
+      bottom: 44px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap: 20px;
+      color: rgba(10,10,14,0.55);
+      font-size: 22px;
+    }
+    .footer .mini{
+      display:flex;
+      gap: 14px;
+      align-items:center;
+    }
+
+    #overlay{
+      position:absolute;
+      inset:0;
+      display:none;
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      align-items:center;
+      justify-content:center;
+      padding: 56px;
+      z-index: 10;
+    }
+    #overlay .card{
+      width: 100%;
+      max-width: 980px;
+      border-radius: 44px;
+      background: rgba(255,255,255,0.86);
+      border: 1px solid rgba(0,0,0,0.10);
+      padding: 44px;
+      box-shadow: 0 40px 100px rgba(0,0,0,0.35);
+      white-space: pre-line;
+    }
+    #overlay h2{
+      margin: 0 0 10px 0;
+      font-size: 54px;
+      letter-spacing: 0.05em;
+      color: rgba(10,10,14,0.88);
+    }
+
+    #praiseLabel{
+      margin: 10px 0 22px 0;
+      font-size: 60px;
+      font-weight: 950;
+      letter-spacing: 0.04em;
+      line-height: 1.15;
+      color: rgba(10,10,14,0.92);
+    }
+    #praiseLabel::after{
+      content:"";
+      display:block;
+      margin-top: 14px;
+      height: 10px;
+      width: 52%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(255,77,109,0.55), rgba(255,166,43,0.35), rgba(46,196,182,0.30));
+    }
+
+    .resultBig{
+      font-size: 44px;
+      font-weight: 900;
+      margin: 10px 0 8px 0;
+      letter-spacing: 0.03em;
+      color: rgba(10,10,14,0.88);
+    }
+    #overlay .small{
+      color: rgba(10,10,14,0.62);
+      font-size: 26px;
+      line-height: 1.6;
+      white-space: pre-line;
+    }
+    #overlay .actions{
+      margin-top: 28px;
+      display:flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="stage-wrap">
+    <div id="stage">
+      <div class="pad">
+        <div class="topbar">
+          <div class="brand">
+            <!-- ★変更：ゲームタイトル -->
+            <h1>四字熟語を答えよう！</h1>
+            <div class="sub">一字穴埋め（10問）・スマホ1画面</div>
+          </div>
+
+          <div class="stats">
+            <div class="pill">
+              <div class="k">問題</div>
+              <div class="v"><span id="qIndex">1</span> / 10</div>
+            </div>
+            <div class="pill">
+              <div class="k">レベル（漢検目安）</div>
+              <div class="v">Lv.<span id="lvlLabel">1</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="controls">
+            <label style="display:flex; flex-direction:column; gap:10px;">
+              <span style="font-size:22px; color:var(--muted); letter-spacing:.04em;">難易度を選択</span>
+              <select id="levelSelect" class="select" aria-label="レベル選択">
+                <option value="1">レベル1（漢検10級相当）</option>
+                <option value="2">レベル2（漢検9級相当）</option>
+                <option value="3">レベル3（漢検8級相当）</option>
+                <option value="4">レベル4（漢検7級相当）</option>
+                <option value="5">レベル5（漢検6級相当）</option>
+                <option value="6">レベル6（漢検5級相当）</option>
+                <option value="7">レベル7（漢検4級相当）</option>
+                <option value="8">レベル8（漢検3級相当）</option>
+                <option value="9">レベル9（漢検準2〜2級相当）</option>
+                <option value="10">レベル10（漢検準1〜1級相当）</option>
+              </select>
+            </label>
+
+            <button id="startBtn" class="btn primary">ゲーム開始</button>
+            <button id="pauseBtn" class="btn warn" disabled>⏸ 一時停止</button>
+            <button id="restartBtn" class="btn" disabled>🔁 リスタート</button>
+
+            <div style="flex:1"></div>
+
+            <div style="display:flex; flex-direction:column; gap:10px; align-items:flex-end;">
+              <div style="font-size:22px; color:var(--muted); letter-spacing:.04em;">計測（問題表示→回答まで）</div>
+              <div style="font-size:26px; color:var(--muted);">※一時停止中はカウントしません</div>
+            </div>
+          </div>
+
+          <div class="qarea">
+            <div class="question-box panel" style="padding:32px;">
+              <div class="qmeta">
+                <div class="left">
+                  <div class="title">空白（□）に入る漢字を選んでください</div>
+                  <div class="desc">選択肢は4つ。タップで回答。</div>
+                </div>
+                <div class="timer">
+                  <div class="time" id="timeLabel">0.000s</div>
+                  <div class="hint" id="timeHint">ゲーム開始で計測開始</div>
+                </div>
+              </div>
+
+              <div class="idiom" aria-label="四字熟語">
+                <div class="cell" id="c0">?</div>
+                <div class="cell" id="c1">?</div>
+                <div class="cell" id="c2">?</div>
+                <div class="cell blank" id="c3">□</div>
+              </div>
+
+              <div class="choices" aria-label="選択肢">
+                <button class="choice" id="ch0" disabled>?</button>
+                <button class="choice" id="ch1" disabled>?</button>
+                <button class="choice" id="ch2" disabled>?</button>
+                <button class="choice" id="ch3" disabled>?</button>
+              </div>
+
+              <div class="feedback" id="feedback">—</div>
+            </div>
+
+            <div class="side">
+              <div class="panel" style="padding:32px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap: 14px;">
+                  <div style="font-size:30px; font-weight:900; letter-spacing:.03em;">進捗</div>
+                  <div style="font-size:22px; color:var(--muted);" id="statusLabel">待機中</div>
+                </div>
+                <div class="progress" id="progress"></div>
+              </div>
+
+              <div class="log">
+                <h3>記録（直近）</h3>
+                <div id="logLines"></div>
+              </div>
+
+              <div class="panel" style="padding:32px;">
+                <div style="font-size:28px; font-weight:900; letter-spacing:.03em; margin-bottom:10px;">操作</div>
+                <div style="font-size:24px; color:var(--muted); line-height:1.6;">
+                  ・「一時停止」をタップで停止／再開<br/>
+                  ・回答すると次の問題へ自動進行<br/>
+                  ・全10問の平均回答時間を最後に表示
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer">
+          <div class="mini">
+            <span>© Kanji Idiom Quiz</span>
+            <span>・</span>
+            <span>1200×2400 内に収まる固定UI</span>
+          </div>
+          <div class="mini">
+            <span>ヒント：</span>
+            <span>レベルを変えると出題語彙が変わります</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="overlay">
+        <div class="card">
+          <h2>ゲーム完了</h2>
+          <div id="praiseLabel">—</div>
+
+          <div class="resultBig">平均：<span id="avgLabel">0.000s</span></div>
+          <div class="resultBig">正答数：<span id="scoreLabel">0</span> / 10</div>
+
+          <div class="small" id="detailLabel"></div>
+          <div class="actions">
+            <button class="btn good" id="playAgainBtn">もう一度（同レベル）</button>
+            <button class="btn" id="closeOverlayBtn">閉じる</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+(() => {
+  /**********************
+   * 1200x2400 スケール
+   **********************/
+  const stage = document.getElementById('stage');
+  function fitStage(){
+    const W = 1200, H = 2400;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const s = Math.min(vw / W, vh / H);
+    stage.style.transform = `scale(${s})`;
+  }
+  window.addEventListener('resize', fitStage, {passive:true});
+  fitStage();
+
+  /**********************
+   * 出題データ（各レベル30個）
+   **********************/
+  const idiomsByLevel = {
+    1: [
+      "一石二鳥","大同小異","前後左右","早起早寝","右往左往","山川草木","男女平等","花鳥風月","白黒明白","千客万来",
+      "東西南北","明朗快活","安全第一","自画自賛","元気溌剌","一長一短","大小不同比","十中八九","千変万化","日々是好日",
+      "一心同体","一生懸命","先手必勝","温厚篤実","百発百中","一日一善","笑門来福","天真爛漫","有名無実","心身一如"
+    ],
+    2: [
+      "異口同音","自業自得","十人十色","温故知新","以心伝心","一日千秋","起死回生","晴耕雨読","臨機応変","試行錯誤",
+      "因果応報","悪戦苦闘","危機一髪","四面楚歌","一進一退","心機一転","有言実行","優柔不断","自給自足","七転八起",
+      "一念発起","電光石火","五里霧中","千差万別","質実剛健","一攫千金","明鏡止水","栄枯盛衰","日進月歩","切磋琢磨"
+    ],
+    3: [
+      "百花繚乱","千載一遇","前代未聞","紆余曲折","一網打尽","疑心暗鬼","百戦錬磨","縦横無尽","泰然自若","勧善懲悪",
+      "意味深長","終始一貫","表裏一体","空前絶後","朝令暮改","一喜一憂","自縄自縛","針小棒大","付和雷同","優勝劣敗",
+      "因循姑息","無為徒食","門外不出","疾風迅雷","融通無碍","精励恪勤","巧言令色","臥薪嘗胆","捲土重来","一瀉千里"
+    ],
+    4: [
+      "毀誉褒貶","慇懃無礼","支離滅裂","曖昧模糊","跋扈跳梁","欣喜雀躍","衆寡敵せず","確乎不抜","隔靴掻痒","空理空論",
+      "玉石混交","一朝一夕","余裕綽々","乾坤一擲","終日一誠","一部始終","同床異夢","公明正大","軽挙妄動","多岐亡羊",
+      "一寸光陰","粉骨砕身","破顔一笑","九死一生","千思万考","情状酌量","明哲保身","外柔内剛","質疑応答","枝葉末節"
+    ],
+    5: [
+      "改過自新","疑心暗鬼","支離滅裂","朝三暮四","大器晩成","一罰百戒","電光石火","日進月歩","公明正大","不言実行",
+      "率先垂範","試行錯誤","温故知新","臨機応変","一騎当千","千軍万馬","一刀両断","自給自足","因果応報","有名無実",
+      "栄枯盛衰","明鏡止水","切磋琢磨","質実剛健","百花繚乱","千載一遇","前代未聞","紆余曲折","一網打尽","百戦錬磨"
+    ],
+    6: [
+      "剛毅木訥","虚心坦懐","独立独歩","平身低頭","正々堂々","精進潔斎","温厚篤実","泰然自若","明鏡止水","勧善懲悪",
+      "切磋琢磨","栄枯盛衰","日進月歩","縦横無尽","百戦錬磨","疑心暗鬼","一網打尽","百花繚乱","臥薪嘗胆","捲土重来",
+      "自縄自縛","付和雷同","針小棒大","因循姑息","無為徒食","門外不出","疾風迅雷","融通無碍","精励恪勤","一瀉千里"
+    ],
+    7: [
+      "剣呑浮躁","韋編三絶","孤軍奮闘","当意即妙","融通無碍","乾坤一擲","粉骨砕身","九死一生","情状酌量","枝葉末節",
+      "玉石混交","同床異夢","軽挙妄動","多岐亡羊","外柔内剛","明哲保身","一寸光陰","終日一誠","余裕綽々","破顔一笑",
+      "確乎不抜","隔靴掻痒","空理空論","衆寡敵せず","慇懃無礼","欣喜雀躍","跋扈跳梁","曖昧模糊","毀誉褒貶","支離滅裂"
+    ],
+    8: [
+      "鶏口牛後","巧言令色","孟母三遷","異端邪説","因果応報","臨機応変","温故知新","百折不撓","一意専心","独立独歩",
+      "虚心坦懐","剛毅木訥","平身低頭","正々堂々","精進潔斎","泰然自若","明鏡止水","切磋琢磨","栄枯盛衰","日進月歩",
+      "縦横無尽","百戦錬磨","臥薪嘗胆","捲土重来","自縄自縛","付和雷同","針小棒大","因循姑息","無為徒食","一瀉千里"
+    ],
+    9: [
+      "刮目相待","一視同仁","天下無双","豪放磊落","聡明叡智","慧眼識見","温故知新","臨機応変","疑心暗鬼","百戦錬磨",
+      "縦横無尽","明鏡止水","泰然自若","切磋琢磨","栄枯盛衰","日進月歩","百花繚乱","千載一遇","前代未聞","紆余曲折",
+      "一網打尽","自縄自縛","付和雷同","針小棒大","因循姑息","無為徒食","門外不出","疾風迅雷","融通無碍","精励恪勤"
+    ],
+    10:[
+      "欣喜雀躍","曖昧模糊","衆寡敵せず","慇懃無礼","捲土重来","跋扈跳梁","毀誉褒貶","支離滅裂","確乎不抜","隔靴掻痒",
+      "乾坤一擲","多岐亡羊","韋編三絶","剣呑浮躁","聡明叡智","慧眼識見","豪放磊落","天下無双","刮目相待","一視同仁",
+      "空理空論","玉石混交","粉骨砕身","九死一生","情状酌量","枝葉末節","同床異夢","軽挙妄動","終日一誠","余裕綽々"
+    ]
+  };
+
+  function buildKanjiPool(level){
+    const set = new Set();
+    (idiomsByLevel[level] || []).forEach(idm => [...idm].forEach(ch => set.add(ch)));
+    set.delete("□");
+    return [...set];
+  }
+
+  const levelSelect = document.getElementById('levelSelect');
+  const startBtn = document.getElementById('startBtn');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const restartBtn = document.getElementById('restartBtn');
+
+  const qIndexEl = document.getElementById('qIndex');
+  const lvlLabelEl = document.getElementById('lvlLabel');
+  const timeLabel = document.getElementById('timeLabel');
+  const timeHint = document.getElementById('timeHint');
+  const feedback = document.getElementById('feedback');
+  const statusLabel = document.getElementById('statusLabel');
+
+  const cells = [0,1,2,3].map(i => document.getElementById('c'+i));
+  const choiceBtns = [0,1,2,3].map(i => document.getElementById('ch'+i));
+  const progressEl = document.getElementById('progress');
+  const logLines = document.getElementById('logLines');
+
+  const overlay = document.getElementById('overlay');
+  const avgLabel = document.getElementById('avgLabel');
+  const scoreLabel = document.getElementById('scoreLabel');
+  const praiseLabel = document.getElementById('praiseLabel');
+  const detailLabel = document.getElementById('detailLabel');
+  const playAgainBtn = document.getElementById('playAgainBtn');
+  const closeOverlayBtn = document.getElementById('closeOverlayBtn');
+
+  let level = 1;
+  let gameActive = false;
+  let paused = false;
+
+  let questions = [];
+  let qIdx = 0;
+  let blankPos = 3;
+  let correctChar = "";
+  let results = [];
+
+  let qStart = 0;
+  let pauseStart = 0;
+  let pausedAccum = 0;
+  let rafId = 0;
+
+  function fmtSec(ms){ return (ms/1000).toFixed(3) + "s"; }
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]] = [a[j],a[i]];
+    }
+    return a;
+  }
+
+  function pick10(level){
+    const src = idiomsByLevel[level] || [];
+    if(src.length === 0) return [];
+    const out = [];
+    let bag = shuffle(src);
+    while(out.length < 10){
+      if(bag.length === 0) bag = shuffle(src);
+      out.push(bag.pop());
+    }
+    return out;
+  }
+
+  function makeChoices(level, correct){
+    const pool = buildKanjiPool(level);
+    const set = new Set([correct]);
+    while(set.size < 4){
+      const pick = pool[Math.floor(Math.random()*pool.length)];
+      if(pick && pick !== correct) set.add(pick);
+    }
+    return shuffle([...set]);
+  }
+
+  function setChoicesEnabled(on){ choiceBtns.forEach(b => b.disabled = !on); }
+
+  function renderProgress(){
+    progressEl.innerHTML = "";
+    for(let i=0;i<10;i++){
+      const d = document.createElement('div');
+      d.className = "dot";
+      d.textContent = (i+1);
+      if(i === qIdx && gameActive) d.classList.add("now");
+      if(results[i]){
+        d.classList.remove("now");
+        if(results[i].correct) d.classList.add("done");
+        else d.classList.add("bad");
+      }
+      progressEl.appendChild(d);
+    }
+  }
+
+  function pushLog(text){
+    const line = document.createElement('div');
+    line.className = "line";
+    line.textContent = text;
+    logLines.prepend(line);
+    while(logLines.children.length > 10){
+      logLines.removeChild(logLines.lastChild);
+    }
+  }
+
+  function stopRAF(){ if(rafId) cancelAnimationFrame(rafId); rafId = 0; }
+  function updateTimer(){
+    if(!gameActive){ timeLabel.textContent = "0.000s"; return; }
+    const now = performance.now();
+    let elapsed = now - qStart - pausedAccum;
+    if(paused) elapsed = pauseStart - qStart - pausedAccum;
+    if(elapsed < 0) elapsed = 0;
+    timeLabel.textContent = fmtSec(elapsed);
+    rafId = requestAnimationFrame(updateTimer);
+  }
+
+  function startQuestion(){
+    feedback.textContent = "—";
+    feedback.style.color = getComputedStyle(document.documentElement).getPropertyValue('--muted');
+
+    const idiom = questions[qIdx];
+    blankPos = Math.floor(Math.random()*4);
+    correctChar = [...idiom][blankPos];
+
+    const chars = [...idiom];
+    for(let i=0;i<4;i++){
+      if(i === blankPos){
+        cells[i].textContent = "□";
+        cells[i].classList.add("blank");
+      }else{
+        cells[i].textContent = chars[i];
+        cells[i].classList.remove("blank");
+      }
+    }
+
+    const choices = makeChoices(level, correctChar);
+    choiceBtns.forEach((btn, i) => {
+      btn.textContent = choices[i];
+      btn.classList.remove("good","bad");
+      btn.disabled = false;
+    });
+
+    paused = false;
+    pauseBtn.textContent = "⏸ 一時停止";
+    pauseBtn.classList.remove("primary");
+    pausedAccum = 0;
+    qStart = performance.now();
+    timeHint.textContent = "計測中（回答すると次の問題へ）";
+    stopRAF();
+    updateTimer();
+
+    qIndexEl.textContent = (qIdx+1);
+    lvlLabelEl.textContent = level;
+    statusLabel.textContent = "出題中";
+    renderProgress();
+  }
+
+  function praiseByAvgSeconds(avgSec){
+    if(avgSec <= 2.0) return "漢字の神かよ！";
+    if(avgSec <= 4.0) return "漢字博士って呼ばれない？";
+    if(avgSec <= 6.0) return "読書好きそう";
+    if(avgSec <= 8.0) return "眠かっただけ・・・だよね？";
+    return "眠かっただけ・・・だよね？";
+  }
+
+  function finishGame(){
+    gameActive = false;
+    setChoicesEnabled(false);
+    pauseBtn.disabled = true;
+    restartBtn.disabled = false;
+    startBtn.disabled = false;
+    levelSelect.disabled = false;
+    stopRAF();
+    statusLabel.textContent = "完了";
+
+    const total = results.reduce((s,r)=>s+(r?.timeMs||0), 0);
+    const avg = total / 10;
+    const avgSec = avg / 1000;
+    const correctCount = results.filter(r=>r.correct).length;
+
+    avgLabel.textContent = fmtSec(avg);
+    scoreLabel.textContent = String(correctCount);
+    praiseLabel.textContent = praiseByAvgSeconds(avgSec);
+
+    const lines = results.map((r, i) => {
+      const pos = ["1文字目","2文字目","3文字目","4文字目"][r.blankPos];
+      const mark = r.correct ? "○" : "×";
+      return `${i+1}. ${r.idiom}（空白:${pos}） 回答:${r.answer} ${mark}  ${fmtSec(r.timeMs)}`;
+    });
+    detailLabel.textContent = `（レベル：Lv.${level}）\n\n` + lines.join("\n");
+
+    overlay.style.display = "flex";
+  }
+
+  function answer(choiceChar){
+    if(!gameActive || paused) return;
+
+    const now = performance.now();
+    const elapsed = now - qStart - pausedAccum;
+
+    const idiom = questions[qIdx];
+    const ok = (choiceChar === correctChar);
+
+    choiceBtns.forEach(btn => {
+      btn.disabled = true;
+      if(btn.textContent === correctChar) btn.classList.add("good");
+      if(btn.textContent === choiceChar && !ok) btn.classList.add("bad");
+    });
+
+    feedback.textContent = ok ? "正解！" : `不正解…（正解：${correctChar}）`;
+    feedback.style.color = ok ? getComputedStyle(document.documentElement).getPropertyValue('--good')
+                              : getComputedStyle(document.documentElement).getPropertyValue('--bad');
+
+    results[qIdx] = { idiom, blankPos, answer: choiceChar, correct: ok, timeMs: Math.max(0, elapsed) };
+    renderProgress();
+    pushLog(`${qIdx+1}/10  ${ok ? "○" : "×"}  ${idiom}  ${fmtSec(elapsed)}`);
+
+    stopRAF();
+    setTimeout(() => {
+      qIdx++;
+      if(qIdx >= 10) finishGame();
+      else startQuestion();
+    }, 520);
+  }
+
+  function startGame(){
+    level = parseInt(levelSelect.value, 10);
+    lvlLabelEl.textContent = level;
+
+    questions = pick10(level);
+    results = new Array(10).fill(null);
+    qIdx = 0;
+
+    gameActive = true;
+    paused = false;
+    overlay.style.display = "none";
+
+    startBtn.disabled = true;
+    restartBtn.disabled = false;
+    pauseBtn.disabled = false;
+    levelSelect.disabled = true;
+
+    statusLabel.textContent = "開始";
+    logLines.innerHTML = "";
+    renderProgress();
+    startQuestion();
+  }
+
+  function restartGame(){
+    if(!levelSelect.disabled) level = parseInt(levelSelect.value, 10);
+    levelSelect.value = String(level);
+    startGame();
+  }
+
+  function togglePause(){
+    if(!gameActive) return;
+    if(!paused){
+      paused = true;
+      pauseStart = performance.now();
+      pauseBtn.textContent = "▶ 再開";
+      pauseBtn.classList.add("primary");
+      timeHint.textContent = "一時停止中（再開でカウント再開）";
+      statusLabel.textContent = "一時停止";
+      renderProgress();
+    }else{
+      const now = performance.now();
+      pausedAccum += (now - pauseStart);
+      paused = false;
+      pauseBtn.textContent = "⏸ 一時停止";
+      pauseBtn.classList.remove("primary");
+      timeHint.textContent = "計測中（回答すると次の問題へ）";
+      statusLabel.textContent = "出題中";
+      renderProgress();
+    }
+  }
+
+  levelSelect.addEventListener('change', () => { lvlLabelEl.textContent = levelSelect.value; }, {passive:true});
+  startBtn.addEventListener('click', startGame);
+  restartBtn.addEventListener('click', restartGame);
+  pauseBtn.addEventListener('click', togglePause);
+  choiceBtns.forEach(btn => btn.addEventListener('click', () => answer(btn.textContent)));
+
+  playAgainBtn.addEventListener('click', () => {
+    overlay.style.display = "none";
+    levelSelect.value = String(level);
+    startGame();
+  });
+  closeOverlayBtn.addEventListener('click', () => { overlay.style.display = "none"; });
+
+  renderProgress();
+  setChoicesEnabled(false);
+  pauseBtn.disabled = true;
+  restartBtn.disabled = true;
+  timeHint.textContent = "「ゲーム開始」で計測開始";
+
+  document.addEventListener('touchmove', (e) => { e.preventDefault(); }, {passive:false});
+})();
+</script>
+</body>
+</html>
