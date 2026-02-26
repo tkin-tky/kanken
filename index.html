@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, maximum-scale=1, viewport-fit=cover" />
   <title>四字熟語・一字穴埋め（10問）</title>
   <style>
     :root{
@@ -61,16 +61,12 @@
       position: relative;
       box-shadow: 0 30px 80px rgba(0,0,0,0.25);
 
-      /* ★変更：背景を back.jpg に（最背面レイヤーとして差し替え） */
       background:
         url('back.jpg') center / cover no-repeat,
-        /* 判子風スタンプ */
         radial-gradient(220px 220px at 86% 16%, rgba(255,77,109,0.12), transparent 62%),
         radial-gradient(260px 260px at 88% 18%, rgba(255,77,109,0.10), transparent 64%),
-        /* 薄い墨にじみ */
         radial-gradient(900px 900px at 18% 28%, rgba(10,10,14,0.10), transparent 60%),
         radial-gradient(700px 700px at 78% 78%, rgba(10,10,14,0.08), transparent 62%),
-        /* 原稿用紙風の罫線 */
         linear-gradient(0deg, rgba(0,0,0,0.04) 1px, transparent 1px),
         linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
       background-size:
@@ -87,7 +83,6 @@
         0 0;
     }
 
-    /* 巨大な薄墨「漢」「字」など（擬似要素で描画） */
     #stage::before{
       content: "漢\n字\n遊\n戯";
       white-space: pre;
@@ -105,7 +100,6 @@
       pointer-events: none;
     }
     #stage::after{
-      /* ★変更：背景側のタイトル表記も合わせる（薄墨） */
       content: "四字熟語を答えよう！";
       position: absolute;
       left: 70px;
@@ -149,7 +143,6 @@
       align-items:stretch;
     }
 
-    /* カラフル化：ステータス“アイコン”風カード */
     .pill{
       min-width: 220px;
       background: rgba(255,255,255,0.75);
@@ -194,7 +187,6 @@
       flex-wrap: wrap;
     }
 
-    /* カラフル化：ボタン（アイコン含む） */
     .btn{
       border: 1px solid rgba(0,0,0,0.10);
       background: rgba(255,255,255,0.65);
@@ -207,6 +199,7 @@
       cursor: pointer;
       user-select:none;
       box-shadow: 0 12px 26px rgba(0,0,0,0.10);
+      touch-action: manipulation;
     }
     .btn:active{ transform: translateY(1px); }
 
@@ -340,6 +333,7 @@
       box-shadow: 0 12px 26px rgba(0,0,0,0.10);
       position: relative;
       overflow: hidden;
+      touch-action: manipulation;
     }
     .choice::before{
       content:"";
@@ -531,7 +525,6 @@
       <div class="pad">
         <div class="topbar">
           <div class="brand">
-            <!-- ★変更：ゲームタイトル -->
             <h1>四字熟語を答えよう！</h1>
             <div class="sub">一字穴埋め（10問）・スマホ1画面</div>
           </div>
@@ -667,17 +660,17 @@
   </div>
 
 <script>
-(() => {
+(function(){
   /**********************
    * 1200x2400 スケール
    **********************/
-  const stage = document.getElementById('stage');
+  var stage = document.getElementById('stage');
   function fitStage(){
-    const W = 1200, H = 2400;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const s = Math.min(vw / W, vh / H);
-    stage.style.transform = `scale(${s})`;
+    var W = 1200, H = 2400;
+    var vw = window.innerWidth;
+    var vh = window.innerHeight;
+    var s = Math.min(vw / W, vh / H);
+    stage.style.transform = "scale(" + s + ")";
   }
   window.addEventListener('resize', fitStage, {passive:true});
   fitStage();
@@ -685,7 +678,7 @@
   /**********************
    * 出題データ（各レベル30個）
    **********************/
-  const idiomsByLevel = {
+  var idiomsByLevel = {
     1: [
       "一石二鳥","大同小異","前後左右","早起早寝","右往左往","山川草木","男女平等","花鳥風月","白黒明白","千客万来",
       "東西南北","明朗快活","安全第一","自画自賛","元気溌剌","一長一短","大小不同比","十中八九","千変万化","日々是好日",
@@ -739,67 +732,69 @@
   };
 
   function buildKanjiPool(level){
-    const set = new Set();
-    (idiomsByLevel[level] || []).forEach(idm => [...idm].forEach(ch => set.add(ch)));
+    var set = new Set();
+    (idiomsByLevel[level] || []).forEach(function(idm){
+      Array.prototype.forEach.call(idm, function(ch){ set.add(ch); });
+    });
     set.delete("□");
-    return [...set];
+    return Array.from(set);
   }
 
-  const levelSelect = document.getElementById('levelSelect');
-  const startBtn = document.getElementById('startBtn');
-  const pauseBtn = document.getElementById('pauseBtn');
-  const restartBtn = document.getElementById('restartBtn');
+  var levelSelect = document.getElementById('levelSelect');
+  var startBtn = document.getElementById('startBtn');
+  var pauseBtn = document.getElementById('pauseBtn');
+  var restartBtn = document.getElementById('restartBtn');
 
-  const qIndexEl = document.getElementById('qIndex');
-  const lvlLabelEl = document.getElementById('lvlLabel');
-  const timeLabel = document.getElementById('timeLabel');
-  const timeHint = document.getElementById('timeHint');
-  const feedback = document.getElementById('feedback');
-  const statusLabel = document.getElementById('statusLabel');
+  var qIndexEl = document.getElementById('qIndex');
+  var lvlLabelEl = document.getElementById('lvlLabel');
+  var timeLabel = document.getElementById('timeLabel');
+  var timeHint = document.getElementById('timeHint');
+  var feedback = document.getElementById('feedback');
+  var statusLabel = document.getElementById('statusLabel');
 
-  const cells = [0,1,2,3].map(i => document.getElementById('c'+i));
-  const choiceBtns = [0,1,2,3].map(i => document.getElementById('ch'+i));
-  const progressEl = document.getElementById('progress');
-  const logLines = document.getElementById('logLines');
+  var cells = [0,1,2,3].map(function(i){ return document.getElementById('c'+i); });
+  var choiceBtns = [0,1,2,3].map(function(i){ return document.getElementById('ch'+i); });
+  var progressEl = document.getElementById('progress');
+  var logLines = document.getElementById('logLines');
 
-  const overlay = document.getElementById('overlay');
-  const avgLabel = document.getElementById('avgLabel');
-  const scoreLabel = document.getElementById('scoreLabel');
-  const praiseLabel = document.getElementById('praiseLabel');
-  const detailLabel = document.getElementById('detailLabel');
-  const playAgainBtn = document.getElementById('playAgainBtn');
-  const closeOverlayBtn = document.getElementById('closeOverlayBtn');
+  var overlay = document.getElementById('overlay');
+  var avgLabel = document.getElementById('avgLabel');
+  var scoreLabel = document.getElementById('scoreLabel');
+  var praiseLabel = document.getElementById('praiseLabel');
+  var detailLabel = document.getElementById('detailLabel');
+  var playAgainBtn = document.getElementById('playAgainBtn');
+  var closeOverlayBtn = document.getElementById('closeOverlayBtn');
 
-  let level = 1;
-  let gameActive = false;
-  let paused = false;
+  var level = 1;
+  var gameActive = false;
+  var paused = false;
 
-  let questions = [];
-  let qIdx = 0;
-  let blankPos = 3;
-  let correctChar = "";
-  let results = [];
+  var questions = [];
+  var qIdx = 0;
+  var blankPos = 3;
+  var correctChar = "";
+  var results = [];
 
-  let qStart = 0;
-  let pauseStart = 0;
-  let pausedAccum = 0;
-  let rafId = 0;
+  var qStart = 0;
+  var pauseStart = 0;
+  var pausedAccum = 0;
+  var rafId = 0;
 
   function fmtSec(ms){ return (ms/1000).toFixed(3) + "s"; }
   function shuffle(arr){
-    const a = arr.slice();
-    for(let i=a.length-1;i>0;i--){
-      const j = Math.floor(Math.random()*(i+1));
-      [a[i],a[j]] = [a[j],a[i]];
+    var a = arr.slice();
+    for(var i=a.length-1;i>0;i--){
+      var j = Math.floor(Math.random()*(i+1));
+      var tmp=a[i]; a[i]=a[j]; a[j]=tmp;
     }
     return a;
   }
 
   function pick10(level){
-    const src = idiomsByLevel[level] || [];
+    var src = idiomsByLevel[level] || [];
     if(src.length === 0) return [];
-    const out = [];
-    let bag = shuffle(src);
+    var out = [];
+    var bag = shuffle(src);
     while(out.length < 10){
       if(bag.length === 0) bag = shuffle(src);
       out.push(bag.pop());
@@ -808,21 +803,23 @@
   }
 
   function makeChoices(level, correct){
-    const pool = buildKanjiPool(level);
-    const set = new Set([correct]);
+    var pool = buildKanjiPool(level);
+    var set = new Set([correct]);
     while(set.size < 4){
-      const pick = pool[Math.floor(Math.random()*pool.length)];
+      var pick = pool[Math.floor(Math.random()*pool.length)];
       if(pick && pick !== correct) set.add(pick);
     }
-    return shuffle([...set]);
+    return shuffle(Array.from(set));
   }
 
-  function setChoicesEnabled(on){ choiceBtns.forEach(b => b.disabled = !on); }
+  function setChoicesEnabled(on){
+    choiceBtns.forEach(function(b){ b.disabled = !on; });
+  }
 
   function renderProgress(){
     progressEl.innerHTML = "";
-    for(let i=0;i<10;i++){
-      const d = document.createElement('div');
+    for(var i=0;i<10;i++){
+      var d = document.createElement('div');
       d.className = "dot";
       d.textContent = (i+1);
       if(i === qIdx && gameActive) d.classList.add("now");
@@ -836,7 +833,7 @@
   }
 
   function pushLog(text){
-    const line = document.createElement('div');
+    var line = document.createElement('div');
     line.className = "line";
     line.textContent = text;
     logLines.prepend(line);
@@ -848,8 +845,8 @@
   function stopRAF(){ if(rafId) cancelAnimationFrame(rafId); rafId = 0; }
   function updateTimer(){
     if(!gameActive){ timeLabel.textContent = "0.000s"; return; }
-    const now = performance.now();
-    let elapsed = now - qStart - pausedAccum;
+    var now = performance.now();
+    var elapsed = now - qStart - pausedAccum;
     if(paused) elapsed = pauseStart - qStart - pausedAccum;
     if(elapsed < 0) elapsed = 0;
     timeLabel.textContent = fmtSec(elapsed);
@@ -860,12 +857,12 @@
     feedback.textContent = "—";
     feedback.style.color = getComputedStyle(document.documentElement).getPropertyValue('--muted');
 
-    const idiom = questions[qIdx];
+    var idiom = questions[qIdx];
     blankPos = Math.floor(Math.random()*4);
-    correctChar = [...idiom][blankPos];
+    correctChar = Array.from(idiom)[blankPos];
 
-    const chars = [...idiom];
-    for(let i=0;i<4;i++){
+    var chars = Array.from(idiom);
+    for(var i=0;i<4;i++){
       if(i === blankPos){
         cells[i].textContent = "□";
         cells[i].classList.add("blank");
@@ -875,8 +872,8 @@
       }
     }
 
-    const choices = makeChoices(level, correctChar);
-    choiceBtns.forEach((btn, i) => {
+    var choices = makeChoices(level, correctChar);
+    choiceBtns.forEach(function(btn, i){
       btn.textContent = choices[i];
       btn.classList.remove("good","bad");
       btn.disabled = false;
@@ -915,21 +912,25 @@
     stopRAF();
     statusLabel.textContent = "完了";
 
-    const total = results.reduce((s,r)=>s+(r?.timeMs||0), 0);
-    const avg = total / 10;
-    const avgSec = avg / 1000;
-    const correctCount = results.filter(r=>r.correct).length;
+    // ★修正：optional chainingをやめて、古いSafariでも動くように
+    var total = results.reduce(function(s, r){
+      return s + ((r && typeof r.timeMs === "number") ? r.timeMs : 0);
+    }, 0);
+
+    var avg = total / 10;
+    var avgSec = avg / 1000;
+    var correctCount = results.filter(function(r){ return r && r.correct; }).length;
 
     avgLabel.textContent = fmtSec(avg);
     scoreLabel.textContent = String(correctCount);
     praiseLabel.textContent = praiseByAvgSeconds(avgSec);
 
-    const lines = results.map((r, i) => {
-      const pos = ["1文字目","2文字目","3文字目","4文字目"][r.blankPos];
-      const mark = r.correct ? "○" : "×";
-      return `${i+1}. ${r.idiom}（空白:${pos}） 回答:${r.answer} ${mark}  ${fmtSec(r.timeMs)}`;
+    var lines = results.map(function(r, i){
+      var pos = ["1文字目","2文字目","3文字目","4文字目"][r.blankPos];
+      var mark = r.correct ? "○" : "×";
+      return (i+1) + ". " + r.idiom + "（空白:" + pos + "） 回答:" + r.answer + " " + mark + "  " + fmtSec(r.timeMs);
     });
-    detailLabel.textContent = `（レベル：Lv.${level}）\n\n` + lines.join("\n");
+    detailLabel.textContent = "（レベル：Lv." + level + "）\n\n" + lines.join("\n");
 
     overlay.style.display = "flex";
   }
@@ -937,28 +938,29 @@
   function answer(choiceChar){
     if(!gameActive || paused) return;
 
-    const now = performance.now();
-    const elapsed = now - qStart - pausedAccum;
+    var now = performance.now();
+    var elapsed = now - qStart - pausedAccum;
 
-    const idiom = questions[qIdx];
-    const ok = (choiceChar === correctChar);
+    var idiom = questions[qIdx];
+    var ok = (choiceChar === correctChar);
 
-    choiceBtns.forEach(btn => {
+    choiceBtns.forEach(function(btn){
       btn.disabled = true;
       if(btn.textContent === correctChar) btn.classList.add("good");
       if(btn.textContent === choiceChar && !ok) btn.classList.add("bad");
     });
 
-    feedback.textContent = ok ? "正解！" : `不正解…（正解：${correctChar}）`;
-    feedback.style.color = ok ? getComputedStyle(document.documentElement).getPropertyValue('--good')
-                              : getComputedStyle(document.documentElement).getPropertyValue('--bad');
+    feedback.textContent = ok ? "正解！" : ("不正解…（正解：" + correctChar + "）");
+    feedback.style.color = ok
+      ? getComputedStyle(document.documentElement).getPropertyValue('--good')
+      : getComputedStyle(document.documentElement).getPropertyValue('--bad');
 
-    results[qIdx] = { idiom, blankPos, answer: choiceChar, correct: ok, timeMs: Math.max(0, elapsed) };
+    results[qIdx] = { idiom: idiom, blankPos: blankPos, answer: choiceChar, correct: ok, timeMs: Math.max(0, elapsed) };
     renderProgress();
-    pushLog(`${qIdx+1}/10  ${ok ? "○" : "×"}  ${idiom}  ${fmtSec(elapsed)}`);
+    pushLog((qIdx+1) + "/10  " + (ok ? "○" : "×") + "  " + idiom + "  " + fmtSec(elapsed));
 
     stopRAF();
-    setTimeout(() => {
+    setTimeout(function(){
       qIdx++;
       if(qIdx >= 10) finishGame();
       else startQuestion();
@@ -1005,7 +1007,7 @@
       statusLabel.textContent = "一時停止";
       renderProgress();
     }else{
-      const now = performance.now();
+      var now = performance.now();
       pausedAccum += (now - pauseStart);
       paused = false;
       pauseBtn.textContent = "⏸ 一時停止";
@@ -1016,26 +1018,41 @@
     }
   }
 
-  levelSelect.addEventListener('change', () => { lvlLabelEl.textContent = levelSelect.value; }, {passive:true});
-  startBtn.addEventListener('click', startGame);
-  restartBtn.addEventListener('click', restartGame);
-  pauseBtn.addEventListener('click', togglePause);
-  choiceBtns.forEach(btn => btn.addEventListener('click', () => answer(btn.textContent)));
+  // ★iPhoneの取りこぼし対策：click + touchend 両方で発火（重複防止も入れる）
+  function bindTap(el, fn){
+    var locked = false;
+    el.addEventListener("click", function(e){
+      fn(e);
+    }, false);
+    el.addEventListener("touchend", function(e){
+      if(locked) return;
+      locked = true;
+      fn(e);
+      setTimeout(function(){ locked = false; }, 300);
+    }, {passive:true});
+  }
 
-  playAgainBtn.addEventListener('click', () => {
+  levelSelect.addEventListener('change', function(){ lvlLabelEl.textContent = levelSelect.value; }, {passive:true});
+  bindTap(startBtn, startGame);
+  bindTap(restartBtn, restartGame);
+  bindTap(pauseBtn, togglePause);
+
+  choiceBtns.forEach(function(btn){
+    bindTap(btn, function(){ answer(btn.textContent); });
+  });
+
+  bindTap(playAgainBtn, function(){
     overlay.style.display = "none";
     levelSelect.value = String(level);
     startGame();
   });
-  closeOverlayBtn.addEventListener('click', () => { overlay.style.display = "none"; });
+  bindTap(closeOverlayBtn, function(){ overlay.style.display = "none"; });
 
   renderProgress();
   setChoicesEnabled(false);
   pauseBtn.disabled = true;
   restartBtn.disabled = true;
   timeHint.textContent = "「ゲーム開始」で計測開始";
-
-  document.addEventListener('touchmove', (e) => { e.preventDefault(); }, {passive:false});
 })();
 </script>
 </body>
