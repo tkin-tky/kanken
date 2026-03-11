@@ -1,956 +1,1032 @@
 <!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
-  <title>四字熟語を答えよう！</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="theme-color" content="#2a1a0a"/>
+  <title>四字熟語 — 一字穴埋め</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700;900&display=swap" rel="stylesheet">
+
   <style>
-    :root{
-      --W:1200;
-      --H:2400;
-      --paper1:#f4efe6;
-      --paper2:#efe7d8;
-      --ink:rgba(10,10,14,0.92);
-      --muted:rgba(10,10,14,0.60);
-      --panel:rgba(255,255,255,0.76);
-      --border:rgba(0,0,0,0.10);
-      --good:#06d6a0;
-      --bad:#ff4d6d;
-      --safeT: env(safe-area-inset-top);
-      --safeR: env(safe-area-inset-right);
-      --safeB: env(safe-area-inset-bottom);
-      --safeL: env(safe-area-inset-left);
-    }
-    *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-    html,body{
-      width:100%; height:100%;
-      margin:0;
-      background: linear-gradient(135deg,var(--paper1),var(--paper2));
-      color:var(--ink);
-      font-family: system-ui,-apple-system,"Hiragino Sans","Noto Sans JP","Yu Gothic","Meiryo",sans-serif;
-      overflow:hidden; /* 1画面固定 */
-    }
+/* ============================================================
+   TOKENS
+============================================================ */
+:root{
+  --washi:   #f5ede0;       /* 和紙ベース */
+  --washi2:  #ede1cf;       /* 少し濃い和紙 */
+  --ink:     #1a100a;       /* 墨 */
+  --ink2:    rgba(26,16,10,.65);
+  --vermil:  #c0392b;       /* 朱 */
+  --vermil2: #e74c3c;
+  --gold:    #b5892a;       /* 金 */
+  --gold2:   #d4a843;
+  --panel:   rgba(255,248,238,.82);
+  --shadow:  rgba(26,16,10,.18);
+  --good:    #27ae60;
+  --bad:     #c0392b;
 
-    /* もしJSが落ちても何か見えるように最低限の背景 */
-    body::before{
-      content:"";
-      position:fixed; inset:0;
-      background:
-        radial-gradient(900px 900px at 20% 25%, rgba(0,0,0,0.08), transparent 60%),
-        radial-gradient(700px 700px at 85% 75%, rgba(0,0,0,0.06), transparent 62%);
-      pointer-events:none;
-    }
+  --safeT: env(safe-area-inset-top,0px);
+  --safeR: env(safe-area-inset-right,0px);
+  --safeB: env(safe-area-inset-bottom,0px);
+  --safeL: env(safe-area-inset-left,0px);
 
-    /* === ステージ枠（画面に収める） === */
-    #wrap{
-      position:fixed; inset:0;
-      display:grid;
-      place-items:center;
-      padding: calc(10px + var(--safeT)) calc(10px + var(--safeR)) calc(10px + var(--safeB)) calc(10px + var(--safeL));
-    }
-    #stage{
-      width: calc(var(--W) * 1px);
-      height: calc(var(--H) * 1px);
-      transform-origin: top left;
-      transform: scale(0.33); /* ★真っ白回避の保険 */
-      border-radius: 48px;
-      overflow:hidden;
-      position:relative;
-      box-shadow: 0 30px 80px rgba(0,0,0,0.25);
+  --font-serif: 'Noto Serif JP','Hiragino Mincho ProN','Yu Mincho',serif;
+}
 
-      background:
-        url('back.jpg') center / cover no-repeat,
-        radial-gradient(220px 220px at 86% 16%, rgba(255,77,109,0.12), transparent 62%),
-        radial-gradient(900px 900px at 18% 28%, rgba(10,10,14,0.10), transparent 60%),
-        linear-gradient(0deg, rgba(0,0,0,0.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
-      background-size: cover, auto, auto, 64px 64px, 64px 64px;
-      background-position: center, center, center, 0 0, 0 0;
-    }
-    #stage::before{
-      content:"漢\n字\n遊\n戯";
-      white-space:pre;
-      position:absolute; inset:0;
-      display:grid; place-items:center;
-      font-weight:900;
-      font-size:260px;
-      line-height:1.05;
-      letter-spacing:0.14em;
-      color: rgba(10,10,14,0.08);
-      transform: rotate(-8deg);
-      pointer-events:none;
-    }
+/* ============================================================
+   BASE
+============================================================ */
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
 
-    .pad{ padding:56px; position:relative; z-index:1; }
+html,body{
+  width:100%; height:100%;
+  overflow:hidden;
+  font-family: var(--font-serif);
+  color: var(--ink);
+  background: var(--washi);
+}
 
-    .topbar{
-      display:flex; justify-content:space-between; gap:24px;
-      align-items:flex-start;
-      margin-bottom: 28px;
-    }
-    h1{
-      margin:0;
-      font-size:54px;
-      letter-spacing:0.06em;
-      line-height:1.1;
-    }
-    .sub{ font-size:28px; color:var(--muted); margin-top:10px; }
+/* ============================================================
+   SEIGAIHA WAVE BACKGROUND (CSS only)
+============================================================ */
+body{
+  background-color: var(--washi2);
+  background-image:
+    /* 青海波パターン */
+    radial-gradient(ellipse 70px 50px at 50px 50px, transparent 49%, rgba(181,137,42,.13) 49%, rgba(181,137,42,.13) 51%, transparent 51%),
+    radial-gradient(ellipse 70px 50px at 120px 50px, transparent 49%, rgba(181,137,42,.13) 49%, rgba(181,137,42,.13) 51%, transparent 51%),
+    radial-gradient(ellipse 70px 50px at 85px 26px, transparent 49%, rgba(181,137,42,.10) 49%, rgba(181,137,42,.10) 51%, transparent 51%),
+    /* 和紙グラデ */
+    radial-gradient(ellipse 110% 60% at 25% 15%, rgba(255,240,210,.60), transparent 60%),
+    radial-gradient(ellipse 80% 70% at 80% 85%, rgba(192,57,43,.07), transparent 60%),
+    linear-gradient(160deg, #f5ede0 0%, #ede1cf 55%, #e8d9c0 100%);
+  background-size: 70px 50px, 70px 50px, 70px 50px, auto, auto, auto;
+  background-attachment: fixed;
+}
 
-    .stats{ display:flex; gap:18px; }
-    .pill{
-      min-width:220px;
-      background: rgba(255,255,255,0.78);
-      border:1px solid var(--border);
-      border-radius:26px;
-      padding:18px 20px;
-      box-shadow: 0 12px 26px rgba(0,0,0,0.10);
-    }
-    .pill .k{ font-size:22px; color:var(--muted); }
-    .pill .v{ font-size:40px; font-weight:900; }
+/* 半透明の霞 */
+body::before{
+  content:"";
+  position:fixed; inset:0;
+  background:
+    radial-gradient(ellipse 60% 40% at 80% 10%, rgba(192,57,43,.06), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 15% 85%, rgba(181,137,42,.06), transparent 55%);
+  pointer-events:none; z-index:0;
+}
 
-    .panel{
-      background: var(--panel);
-      border:1px solid var(--border);
-      border-radius: 36px;
-      padding: 36px;
-      box-shadow: 0 18px 40px rgba(0,0,0,0.08);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
-    }
+/* ============================================================
+   LAYOUT
+============================================================ */
+#wrap{
+  position:fixed; inset:0;
+  padding: calc(6px + var(--safeT)) calc(6px + var(--safeR)) calc(6px + var(--safeB)) calc(6px + var(--safeL));
+  display:flex; flex-direction:column;
+  overflow-y:auto; overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  z-index:1;
+  gap:8px;
+}
 
-    .controls{
-      display:flex; gap:18px; align-items:center; flex-wrap:wrap;
-    }
-    .label{
-      display:flex; flex-direction:column; gap:10px;
-    }
-    .label span{ font-size:22px; color:var(--muted); letter-spacing:.04em; }
+/* ============================================================
+   HEADER — 掛軸風タイトル
+============================================================ */
+.topbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:8px 10px 4px;
+  position:relative;
+}
+.topbar::after{
+  content:"";
+  position:absolute;
+  left:0; right:0; bottom:0;
+  height:2px;
+  background: linear-gradient(90deg, transparent, var(--gold), var(--vermil), var(--gold), transparent);
+}
 
-    .select{
-      appearance:none;
-      border:1px solid rgba(0,0,0,0.12);
-      background: rgba(255,255,255,0.70);
-      color: var(--ink);
-      border-radius:24px;
-      padding:16px 18px;
-      font-size:28px;
-      min-width: 320px;
-      outline:none;
-      box-shadow: 0 10px 22px rgba(0,0,0,0.08);
-    }
+.title-block{ display:flex; flex-direction:column; gap:2px; }
 
-    .btn{
-      border:1px solid rgba(0,0,0,0.10);
-      background: rgba(255,255,255,0.65);
-      color: var(--ink);
-      border-radius:28px;
-      padding:18px 22px;
-      font-size:30px;
-      font-weight:900;
-      cursor:pointer;
-      user-select:none;
-      box-shadow: 0 12px 26px rgba(0,0,0,0.10);
-      touch-action: manipulation;
-    }
-    .btn:active{ transform: translateY(1px); }
-    .btn.primary{
-      background: linear-gradient(135deg, rgba(58,134,255,0.26), rgba(46,196,182,0.18));
-      border-color: rgba(58,134,255,0.28);
-    }
-    .btn.warn{
-      background: linear-gradient(135deg, rgba(255,77,109,0.22), rgba(131,56,236,0.16));
-      border-color: rgba(255,77,109,0.28);
-    }
-    .btn.good{
-      background: linear-gradient(135deg, rgba(6,214,160,0.26), rgba(255,166,43,0.16));
-      border-color: rgba(6,214,160,0.30);
-    }
+h1{
+  font-size: clamp(18px, 5vw, 26px);
+  font-weight:900;
+  letter-spacing:.14em;
+  color: var(--ink);
+  line-height:1.1;
+}
+/* 金の下線 */
+h1 span{
+  display:inline-block;
+  background: linear-gradient(90deg, var(--gold), var(--vermil));
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.sub{
+  font-size:11px;
+  color: var(--ink2);
+  letter-spacing:.1em;
+}
 
-    .qarea{
-      display:grid;
-      grid-template-columns: 1.1fr 0.9fr;
-      gap: 28px;
-      margin-top: 24px;
-    }
+/* 問題番号・レベルバッジ */
+.stats{ display:flex; gap:6px; flex-shrink:0; }
+.badge{
+  display:flex; flex-direction:column; align-items:center;
+  background: var(--panel);
+  border:1px solid rgba(181,137,42,.35);
+  border-radius:8px;
+  padding:4px 10px;
+  box-shadow: 0 4px 12px var(--shadow), inset 0 1px 0 rgba(255,255,255,.6);
+  min-width:56px;
+}
+.badge .bk{ font-size:9px; color:var(--ink2); letter-spacing:.06em; }
+.badge .bv{ font-size:18px; font-weight:900; color:var(--ink); line-height:1.1; }
 
-    .question-box{ display:flex; flex-direction:column; gap:26px; min-height:980px; }
+/* ============================================================
+   PANEL — 和紙パネル
+============================================================ */
+.panel{
+  background: var(--panel);
+  border:1px solid rgba(181,137,42,.30);
+  border-radius:14px;
+  padding:12px;
+  box-shadow:
+    0 6px 20px var(--shadow),
+    inset 0 1px 0 rgba(255,255,255,.65),
+    inset 0 -1px 0 rgba(181,137,42,.12);
+  position:relative;
+}
+/* 角の家紋風装飾 */
+.panel::before, .panel::after{
+  content:"◆";
+  position:absolute;
+  font-size:7px;
+  color: rgba(181,137,42,.55);
+  pointer-events:none;
+}
+.panel::before{ top:5px; left:7px; }
+.panel::after{  top:5px; right:7px; }
 
-    .qmeta{ display:flex; justify-content:space-between; align-items:center; gap:18px; }
-    .qtitle{ font-size:34px; font-weight:900; letter-spacing:.04em; }
-    .qdesc{ font-size:26px; color:var(--muted); margin-top:8px; }
-    .timer{ text-align:right; }
-    .time{ font-size:56px; font-weight:950; letter-spacing:.04em; }
-    .hint{ font-size:22px; color:var(--muted); margin-top:10px; }
+/* ============================================================
+   CONTROLS
+============================================================ */
+.controls{
+  display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+}
+.ctrl-label{
+  display:flex; flex-direction:column; gap:4px; flex:1; min-width:160px;
+}
+.ctrl-label span{
+  font-size:11px; color:var(--ink2); letter-spacing:.08em;
+}
+.wf-select{
+  appearance:none;
+  border:1px solid rgba(181,137,42,.40);
+  background: rgba(255,248,235,.85);
+  color:var(--ink);
+  border-radius:10px;
+  padding:8px 10px;
+  font-size:13px;
+  font-family: var(--font-serif);
+  font-weight:700;
+  width:100%;
+  outline:none;
+  box-shadow: 0 3px 8px var(--shadow), inset 0 1px 0 rgba(255,255,255,.5);
+}
 
-    .idiom{
-      display:flex; justify-content:center; align-items:center;
-      gap:22px;
-      margin-top: 20px;
-      padding: 34px 20px;
-      border-radius: 34px;
-      background: rgba(255,255,255,0.55);
-      border:1px solid rgba(0,0,0,0.08);
-    }
-    .cell{
-      width:170px; height:170px;
-      display:grid; place-items:center;
-      border-radius:26px;
-      font-size:92px;
-      font-weight:950;
-      background: rgba(255,255,255,0.82);
-      border:1px solid rgba(0,0,0,0.10);
-      box-shadow: 0 10px 22px rgba(0,0,0,0.10);
-    }
-    .blank{
-      background: rgba(58,134,255,0.12);
-      border:2px dashed rgba(58,134,255,0.55);
-      color: rgba(10,10,14,0.45);
-    }
+.btns-row{ display:flex; gap:6px; flex-wrap:wrap; }
 
-    .choices{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 18px;
-      margin-top: 18px;
-    }
-    .choice{
-      height:160px;
-      border-radius:34px;
-      font-size:72px;
-      font-weight:950;
-      background: rgba(255,255,255,0.78);
-      border:1px solid rgba(0,0,0,0.10);
-      cursor:pointer;
-      user-select:none;
-      display:grid;
-      place-items:center;
-      box-shadow: 0 12px 26px rgba(0,0,0,0.10);
-      position:relative;
-      overflow:hidden;
-      touch-action: manipulation;
-    }
-    .choice:active{ transform: translateY(2px); }
-    .choice.good{ outline: 4px solid rgba(6,214,160,0.40); }
-    .choice.bad{ outline: 4px solid rgba(255,77,109,0.36); }
+.wf-btn{
+  font-family: var(--font-serif);
+  font-size:13px; font-weight:900;
+  border-radius:10px;
+  padding:8px 12px;
+  cursor:pointer;
+  user-select:none;
+  touch-action:manipulation;
+  letter-spacing:.06em;
+  transition: transform .1s, filter .1s;
+  white-space:nowrap;
+}
+.wf-btn:active{ transform:translateY(1px); }
+.wf-btn:disabled{ opacity:.45; cursor:not-allowed; }
 
-    .feedback{
-      margin-top: 14px;
-      min-height:72px;
-      display:flex; align-items:center; justify-content:center;
-      font-size:34px; font-weight:950;
-      letter-spacing:.04em;
-      color: var(--muted);
-    }
+.wf-btn.primary{
+  background: linear-gradient(160deg, #c0392b, #922b21);
+  color:#fff;
+  border:1px solid rgba(0,0,0,.18);
+  box-shadow: 0 4px 14px rgba(192,57,43,.38), inset 0 1px 0 rgba(255,255,255,.28);
+}
+.wf-btn.warn{
+  background: linear-gradient(160deg, #d4a843, #b5892a);
+  color:#1a100a;
+  border:1px solid rgba(0,0,0,.14);
+  box-shadow: 0 4px 12px rgba(181,137,42,.30), inset 0 1px 0 rgba(255,255,255,.30);
+}
+.wf-btn.plain{
+  background: rgba(255,248,235,.90);
+  color:var(--ink);
+  border:1px solid rgba(181,137,42,.35);
+  box-shadow: 0 3px 8px var(--shadow);
+}
+.wf-btn.good{
+  background: linear-gradient(160deg, #27ae60, #1e8449);
+  color:#fff;
+  border:1px solid rgba(0,0,0,.14);
+  box-shadow: 0 4px 14px rgba(39,174,96,.30), inset 0 1px 0 rgba(255,255,255,.25);
+}
 
-    .side{ display:flex; flex-direction:column; gap:24px; min-height:980px; }
+/* ============================================================
+   QUESTION SECTION
+============================================================ */
+.qsection{ display:flex; flex-direction:column; gap:8px; }
 
-    .progress{ display:flex; gap:10px; flex-wrap:wrap; padding-top:8px; }
-    .dot{
-      width:46px; height:46px;
-      border-radius:18px;
-      border:1px solid rgba(0,0,0,0.12);
-      background: rgba(255,255,255,0.70);
-      display:grid; place-items:center;
-      font-size:22px;
-      color: rgba(10,10,14,0.55);
-      box-shadow: 0 8px 16px rgba(0,0,0,0.08);
-    }
-    .dot.done{ background: rgba(6,214,160,0.22); border-color: rgba(6,214,160,0.32); }
-    .dot.bad{ background: rgba(255,77,109,0.20); border-color: rgba(255,77,109,0.30); }
-    .dot.now{ background: rgba(58,134,255,0.22); border-color: rgba(58,134,255,0.32); color: rgba(10,10,14,0.82); }
+/* タイマー行 */
+.timer-row{
+  display:flex; justify-content:space-between; align-items:center;
+  padding:4px 2px;
+}
+.qtitle{ font-size:13px; font-weight:700; letter-spacing:.06em; }
+.qdesc{ font-size:11px; color:var(--ink2); margin-top:2px; }
+.timer-wrap{ text-align:right; }
+.time{
+  font-size:clamp(22px, 6vw, 30px);
+  font-weight:900;
+  color:var(--vermil);
+  letter-spacing:.04em;
+}
+.thint{ font-size:10px; color:var(--ink2); margin-top:2px; }
 
-    .log{
-      background: rgba(255,255,255,0.72);
-      border:1px solid rgba(0,0,0,0.10);
-      border-radius: 28px;
-      padding: 22px;
-      min-height: 520px;
-      box-shadow: 0 16px 34px rgba(0,0,0,0.08);
-      overflow:hidden;
-    }
-    .log h3{ margin:0 0 12px 0; font-size:28px; letter-spacing:.03em; }
-    .line{
-      font-size:24px;
-      color: rgba(10,10,14,0.62);
-      line-height:1.55;
-      padding: 6px 0;
-      border-bottom:1px dashed rgba(0,0,0,0.10);
-    }
-    .line:last-child{ border-bottom:none; }
+/* ============================================================
+   四字熟語セル — 掛軸風
+============================================================ */
+.idiom-wrap{
+  display:flex; justify-content:center; align-items:center;
+  gap:clamp(6px,2vw,14px);
+  padding:14px 8px;
+  border-radius:12px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(181,137,42,.06) 0px, rgba(181,137,42,.06) 1px,
+      transparent 1px, transparent 20px
+    ),
+    rgba(255,248,230,.70);
+  border:1px solid rgba(181,137,42,.22);
+  position:relative;
+  overflow:hidden;
+}
+/* 縦の飾り線 */
+.idiom-wrap::before, .idiom-wrap::after{
+  content:"";
+  position:absolute; top:6px; bottom:6px;
+  width:1px;
+  background: linear-gradient(180deg, transparent, rgba(181,137,42,.25), transparent);
+}
+.idiom-wrap::before{ left:10px; }
+.idiom-wrap::after{ right:10px; }
 
-    .footer{
-      position:absolute;
-      left:56px; right:56px;
-      bottom:44px;
-      display:flex; justify-content:space-between; gap:20px;
-      color: rgba(10,10,14,0.55);
-      font-size:22px;
-    }
+.kanji-cell{
+  width:  clamp(62px, 17vw, 86px);
+  height: clamp(62px, 17vw, 86px);
+  display:grid; place-items:center;
+  border-radius:10px;
+  font-size: clamp(36px, 10vw, 52px);
+  font-weight:900;
+  background: rgba(255,252,242,.88);
+  border:1px solid rgba(181,137,42,.30);
+  box-shadow:
+    0 4px 12px rgba(26,16,10,.12),
+    inset 0 1px 0 rgba(255,255,255,.8),
+    inset 0 -2px 0 rgba(181,137,42,.14);
+  position:relative;
+}
+/* 升目の格子補助線 */
+.kanji-cell::before{
+  content:"";
+  position:absolute; inset:20%;
+  border:1px solid rgba(181,137,42,.10);
+  pointer-events:none;
+}
 
-    /* ===== 結果オーバーレイ ===== */
-    #overlay{
-      position:absolute; inset:0;
-      display:none;
-      background: rgba(0,0,0,0.45);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      align-items:center; justify-content:center;
-      padding: 56px;
-      z-index: 10;
-    }
-    #overlay .card{
-      width:100%;
-      max-width: 980px;
-      border-radius:44px;
-      background: rgba(255,255,255,0.88);
-      border:1px solid rgba(0,0,0,0.10);
-      padding:44px;
-      box-shadow: 0 40px 100px rgba(0,0,0,0.35);
-      white-space: pre-line;
-    }
-    #overlay h2{
-      margin:0 0 10px 0;
-      font-size:54px;
-      letter-spacing:0.05em;
-    }
-    #praiseLabel{
-      margin: 10px 0 22px 0;
-      font-size:60px;
-      font-weight:950;
-      letter-spacing:0.04em;
-      line-height:1.15;
-    }
-    #praiseLabel::after{
-      content:"";
-      display:block;
-      margin-top:14px;
-      height:10px;
-      width:52%;
-      border-radius:999px;
-      background: linear-gradient(90deg, rgba(255,77,109,0.55), rgba(255,166,43,0.35), rgba(46,196,182,0.30));
-    }
-    .resultBig{
-      font-size:44px;
-      font-weight:950;
-      margin: 10px 0 8px 0;
-      letter-spacing:0.03em;
-    }
-    .small{
-      color: rgba(10,10,14,0.62);
-      font-size:26px;
-      line-height:1.6;
-      white-space: pre-line;
-    }
-    .actions{
-      margin-top:28px;
-      display:flex; gap:16px; flex-wrap:wrap;
-    }
+.kanji-cell.blank{
+  background: rgba(192,57,43,.09);
+  border:2px dashed rgba(192,57,43,.55);
+  box-shadow: 0 0 0 3px rgba(192,57,43,.10), 0 4px 12px rgba(26,16,10,.10);
+  color: rgba(192,57,43,.55);
+  animation: blinkBorder 1.6s ease-in-out infinite;
+}
+@keyframes blinkBorder{
+  0%,100%{ box-shadow: 0 0 0 3px rgba(192,57,43,.10), 0 4px 12px rgba(26,16,10,.10); }
+  50%{     box-shadow: 0 0 0 5px rgba(192,57,43,.20), 0 6px 16px rgba(26,16,10,.14); }
+}
 
-    /* ===== “真っ白”時に原因が見えるようにエラーバナー ===== */
-    #errBar{
-      position:absolute;
-      left: 26px;
-      right: 26px;
-      top: 26px;
-      z-index: 999;
-      display:none;
-      background: rgba(255,255,255,0.92);
-      border: 2px solid rgba(255,77,109,0.35);
-      border-radius: 22px;
-      padding: 14px 16px;
-      box-shadow: 0 18px 40px rgba(0,0,0,0.18);
-      font-size: 22px;
-      line-height: 1.35;
-      color: rgba(10,10,14,0.85);
-    }
-    #errBar b{ color: rgba(255,77,109,0.92); }
+/* ============================================================
+   CHOICES — 選択肢ボタン
+============================================================ */
+.choices{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.choice{
+  height: clamp(64px, 17vw, 84px);
+  border-radius:12px;
+  font-size: clamp(34px, 9vw, 48px);
+  font-weight:900;
+  font-family: var(--font-serif);
+  background: rgba(255,252,242,.88);
+  border:1px solid rgba(181,137,42,.28);
+  cursor:pointer;
+  user-select:none;
+  display:grid; place-items:center;
+  box-shadow:
+    0 5px 14px rgba(26,16,10,.12),
+    inset 0 1px 0 rgba(255,255,255,.70),
+    inset 0 -2px 0 rgba(181,137,42,.12);
+  transition: transform .10s, box-shadow .10s;
+  touch-action:manipulation;
+  position:relative;
+  overflow:hidden;
+  color: var(--ink);
+}
+/* 和風のリップル（pseudo-element 装飾） */
+.choice::after{
+  content:"";
+  position:absolute; inset:-2px;
+  border-radius:12px;
+  opacity:0;
+  transition:opacity .12s;
+  background: radial-gradient(circle at 50% 50%, rgba(181,137,42,.18), transparent 68%);
+}
+.choice:active{ transform:translateY(2px); box-shadow:0 2px 6px rgba(26,16,10,.12); }
+.choice:active::after{ opacity:1; }
+.choice:disabled{ opacity:.55; cursor:not-allowed; }
+
+.choice.good{
+  background: rgba(39,174,96,.14);
+  border:2px solid rgba(39,174,96,.55);
+  color: #1e6e40;
+  box-shadow: 0 0 0 4px rgba(39,174,96,.15), 0 5px 14px rgba(26,16,10,.10);
+}
+.choice.bad{
+  background: rgba(192,57,43,.12);
+  border:2px solid rgba(192,57,43,.50);
+  color: var(--bad);
+  box-shadow: 0 0 0 4px rgba(192,57,43,.12), 0 5px 14px rgba(26,16,10,.10);
+}
+
+/* ============================================================
+   FEEDBACK
+============================================================ */
+.feedback{
+  min-height:32px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:clamp(15px,4.5vw,20px);
+  font-weight:900;
+  letter-spacing:.10em;
+  color:var(--ink2);
+}
+.feedback.ok  { color:var(--good); }
+.feedback.bad { color:var(--bad);  }
+
+/* ============================================================
+   PROGRESS ROW
+============================================================ */
+.prog-section{ display:flex; flex-direction:column; gap:6px; }
+.prog-header{
+  display:flex; justify-content:space-between; align-items:center;
+}
+.prog-title{ font-size:12px; font-weight:700; letter-spacing:.08em; }
+.status-label{ font-size:11px; color:var(--ink2); }
+
+.progress{
+  display:flex; gap:5px; flex-wrap:nowrap; justify-content:center;
+}
+.dot{
+  flex:1; max-width:34px;
+  height:32px;
+  border-radius:7px;
+  border:1px solid rgba(181,137,42,.28);
+  background:rgba(255,248,235,.80);
+  display:grid; place-items:center;
+  font-size:11px; font-weight:700;
+  color:var(--ink2);
+  box-shadow:0 2px 6px var(--shadow);
+  transition:background .2s, border-color .2s;
+}
+.dot.done{ background:rgba(39,174,96,.20); border-color:rgba(39,174,96,.40); color:#1e6e40; }
+.dot.bad{  background:rgba(192,57,43,.18); border-color:rgba(192,57,43,.38); color:#922b21; }
+.dot.now{
+  background:rgba(192,57,43,.16);
+  border-color:rgba(192,57,43,.55);
+  color:var(--vermil);
+  box-shadow:0 0 0 3px rgba(192,57,43,.15), 0 2px 6px var(--shadow);
+  font-weight:900;
+}
+
+/* ============================================================
+   LOG
+============================================================ */
+.log{
+  background: var(--panel);
+  border:1px solid rgba(181,137,42,.25);
+  border-radius:12px;
+  padding:10px 12px;
+  box-shadow:0 4px 12px var(--shadow);
+  flex:1;
+  overflow:hidden;
+}
+.log h3{
+  font-size:12px; font-weight:700;
+  letter-spacing:.08em;
+  margin-bottom:6px;
+  color:var(--ink2);
+  border-bottom:1px solid rgba(181,137,42,.20);
+  padding-bottom:4px;
+}
+.log-line{
+  font-size:11px;
+  color:var(--ink2);
+  line-height:1.6;
+  padding:2px 0;
+  border-bottom:1px dashed rgba(181,137,42,.14);
+}
+.log-line:last-child{ border-bottom:none; }
+
+/* ============================================================
+   FOOTER
+============================================================ */
+.footer{
+  text-align:center;
+  font-size:10px;
+  color:var(--ink2);
+  padding:2px 0 4px;
+  letter-spacing:.08em;
+  flex-shrink:0;
+}
+
+/* ============================================================
+   RESULT OVERLAY
+============================================================ */
+#overlay{
+  position:fixed; inset:0;
+  display:none;
+  align-items:center; justify-content:center;
+  padding:16px;
+  background:rgba(26,16,10,.55);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  z-index:100;
+}
+.result-card{
+  width:100%; max-width:400px;
+  border-radius:20px;
+  background: linear-gradient(160deg, #fdf6e8, #f5ede0);
+  border:2px solid rgba(181,137,42,.45);
+  padding:20px;
+  box-shadow:0 30px 80px rgba(26,16,10,.45), inset 0 1px 0 rgba(255,255,255,.6);
+  position:relative;
+  overflow:hidden;
+}
+/* 和風コーナー飾り */
+.result-card::before{
+  content:"";
+  position:absolute; top:0; left:0; right:0;
+  height:4px;
+  background:linear-gradient(90deg, var(--vermil), var(--gold), var(--vermil));
+}
+.result-card::after{
+  content:"";
+  position:absolute; bottom:0; left:0; right:0;
+  height:4px;
+  background:linear-gradient(90deg, var(--gold), var(--vermil), var(--gold));
+}
+
+.result-card h2{
+  font-size:clamp(18px,5vw,24px);
+  font-weight:900;
+  letter-spacing:.10em;
+  margin-bottom:6px;
+  text-align:center;
+}
+.praise{
+  font-size:clamp(22px,6vw,30px);
+  font-weight:900;
+  text-align:center;
+  letter-spacing:.06em;
+  padding:10px 0 8px;
+  color:var(--vermil);
+  border-bottom:2px solid rgba(181,137,42,.25);
+  margin-bottom:10px;
+}
+.result-big{
+  font-size:clamp(16px,4.5vw,20px);
+  font-weight:900;
+  letter-spacing:.04em;
+  margin-bottom:4px;
+  text-align:center;
+}
+.result-detail{
+  font-size:11px;
+  color:var(--ink2);
+  line-height:1.8;
+  white-space:pre-line;
+  background:rgba(255,248,230,.60);
+  border:1px solid rgba(181,137,42,.18);
+  border-radius:8px;
+  padding:8px 10px;
+  margin-top:8px;
+  max-height:180px;
+  overflow-y:auto;
+}
+.result-actions{
+  display:flex; gap:8px; justify-content:center; flex-wrap:wrap;
+  margin-top:14px;
+}
+
+/* ============================================================
+   ERROR BAR
+============================================================ */
+#errBar{
+  position:fixed; left:8px; right:8px; top:8px; z-index:999;
+  display:none;
+  background:rgba(255,248,238,.95);
+  border:2px solid rgba(192,57,43,.40);
+  border-radius:10px;
+  padding:10px 12px;
+  font-size:13px;
+  box-shadow:0 10px 30px rgba(26,16,10,.20);
+  color:var(--ink);
+}
+#errBar b{ color:var(--vermil); }
+
+/* ============================================================
+   ANIMATIONS
+============================================================ */
+@keyframes fadeSlideUp{
+  from{ opacity:0; transform:translateY(10px); }
+  to{   opacity:1; transform:translateY(0); }
+}
+.panel, .qsection, .prog-section{ animation:fadeSlideUp .35s ease-out both; }
+
+@keyframes correctPop{
+  0%{ transform:scale(1); }
+  40%{ transform:scale(1.18) rotate(-2deg); }
+  70%{ transform:scale(.95) rotate(1deg); }
+  100%{ transform:scale(1); }
+}
+.cell-pop{ animation:correctPop .32s ease-out; }
+
+/* 桜の花びら（CSSアニメ） */
+.petal{
+  position:fixed;
+  font-size:18px;
+  pointer-events:none;
+  z-index:9999;
+  animation:petalFall 1.4s ease-out forwards;
+}
+@keyframes petalFall{
+  0%  { opacity:0; transform:translate(0,0) rotate(0deg)   scale(.5); }
+  15% { opacity:1; }
+  100%{ opacity:0; transform:translate(var(--dx),80px) rotate(200deg) scale(1.1); }
+}
+
+/* ============================================================
+   REDUCE MOTION
+============================================================ */
+@media(prefers-reduced-motion:reduce){
+  .panel,.qsection,.prog-section{ animation:none; }
+  .kanji-cell.blank{ animation:none; }
+  .petal{ display:none; }
+}
   </style>
 </head>
 
 <body>
-  <div id="wrap">
-    <div id="stage" aria-label="四字熟語ゲームステージ">
-      <div id="errBar"></div>
+<div id="errBar"></div>
 
-      <div class="pad">
-        <div class="topbar">
-          <div>
-            <h1>四字熟語を答えよう！</h1>
-            <div class="sub">一字穴埋め（10問）・スマホ1画面</div>
-          </div>
-          <div class="stats">
-            <div class="pill">
-              <div class="k">問題</div>
-              <div class="v"><span id="qIndex">1</span> / 10</div>
-            </div>
-            <div class="pill">
-              <div class="k">レベル（漢検目安）</div>
-              <div class="v">Lv.<span id="lvlLabel">1</span></div>
-            </div>
-          </div>
-        </div>
+<div id="wrap">
 
-        <div class="panel">
-          <div class="controls">
-            <div class="label">
-              <span>難易度を選択</span>
-              <select id="levelSelect" class="select" aria-label="レベル選択">
-                <option value="1">レベル1（漢検10級相当）</option>
-                <option value="2">レベル2（漢検9級相当）</option>
-                <option value="3">レベル3（漢検8級相当）</option>
-                <option value="4">レベル4（漢検7級相当）</option>
-                <option value="5">レベル5（漢検6級相当）</option>
-                <option value="6">レベル6（漢検5級相当）</option>
-                <option value="7">レベル7（漢検4級相当）</option>
-                <option value="8">レベル8（漢検3級相当）</option>
-                <option value="9">レベル9（漢検準2〜2級相当）</option>
-                <option value="10">レベル10（漢検準1〜1級相当）</option>
-              </select>
-            </div>
-
-            <button id="startBtn" class="btn primary">ゲーム開始</button>
-            <button id="pauseBtn" class="btn warn" disabled>⏸ 一時停止</button>
-            <button id="restartBtn" class="btn" disabled>🔁 リスタート</button>
-
-            <div style="flex:1"></div>
-
-            <div style="display:flex;flex-direction:column;gap:10px;align-items:flex-end;">
-              <div style="font-size:22px;color:var(--muted);letter-spacing:.04em;">計測（問題表示→回答まで）</div>
-              <div style="font-size:26px;color:var(--muted);">※一時停止中はカウントしません</div>
-            </div>
-          </div>
-
-          <div class="qarea">
-            <div class="question-box panel" style="padding:32px;">
-              <div class="qmeta">
-                <div>
-                  <div class="qtitle">空白（□）に入る漢字を選んでください</div>
-                  <div class="qdesc">選択肢は4つ。タップで回答。</div>
-                </div>
-                <div class="timer">
-                  <div class="time" id="timeLabel">0.000s</div>
-                  <div class="hint" id="timeHint">「ゲーム開始」で計測開始</div>
-                </div>
-              </div>
-
-              <div class="idiom" aria-label="四字熟語">
-                <div class="cell" id="c0">?</div>
-                <div class="cell" id="c1">?</div>
-                <div class="cell" id="c2">?</div>
-                <div class="cell blank" id="c3">□</div>
-              </div>
-
-              <div class="choices" aria-label="選択肢">
-                <button class="choice" id="ch0" disabled>?</button>
-                <button class="choice" id="ch1" disabled>?</button>
-                <button class="choice" id="ch2" disabled>?</button>
-                <button class="choice" id="ch3" disabled>?</button>
-              </div>
-
-              <div class="feedback" id="feedback">—</div>
-            </div>
-
-            <div class="side">
-              <div class="panel" style="padding:32px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; gap: 14px;">
-                  <div style="font-size:30px; font-weight:950; letter-spacing:.03em;">進捗</div>
-                  <div style="font-size:22px; color:var(--muted);" id="statusLabel">待機中</div>
-                </div>
-                <div class="progress" id="progress"></div>
-              </div>
-
-              <div class="log">
-                <h3>記録（直近）</h3>
-                <div id="logLines"></div>
-              </div>
-
-              <div class="panel" style="padding:32px;">
-                <div style="font-size:28px; font-weight:950; letter-spacing:.03em; margin-bottom:10px;">操作</div>
-                <div style="font-size:24px; color:var(--muted); line-height:1.6;">
-                  ・「一時停止」をタップで停止／再開<br/>
-                  ・回答すると次の問題へ自動進行<br/>
-                  ・全10問の平均回答時間を最後に表示
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="footer">
-          <div>© Kanji Idiom Quiz ・ 1200×2400 固定UI</div>
-          <div>ヒント：レベルを変えると出題語彙が変わります</div>
-        </div>
+  <!-- ===== HEADER ===== -->
+  <div class="topbar">
+    <div class="title-block">
+      <h1><span>四字熟語</span>を答えよう！</h1>
+      <div class="sub">一字穴埋め・全10問</div>
+    </div>
+    <div class="stats">
+      <div class="badge">
+        <span class="bk">問題</span>
+        <span class="bv"><span id="qIndex">1</span>/10</span>
       </div>
-
-      <div id="overlay">
-        <div class="card">
-          <h2>ゲーム完了</h2>
-          <div id="praiseLabel">—</div>
-
-          <div class="resultBig">平均：<span id="avgLabel">0.000s</span></div>
-          <div class="resultBig">正答数：<span id="scoreLabel">0</span> / 10</div>
-
-          <div class="small" id="detailLabel"></div>
-          <div class="actions">
-            <button class="btn good" id="playAgainBtn">もう一度（同レベル）</button>
-            <button class="btn" id="closeOverlayBtn">閉じる</button>
-          </div>
-        </div>
+      <div class="badge">
+        <span class="bk">Lv.</span>
+        <span class="bv" id="lvlLabel">1</span>
       </div>
-
     </div>
   </div>
 
+  <!-- ===== CONTROLS ===== -->
+  <div class="panel" style="animation-delay:.04s">
+    <div class="controls">
+      <div class="ctrl-label">
+        <span>難易度を選択</span>
+        <select id="levelSelect" class="wf-select">
+          <option value="1">一の巻（漢検10級）</option>
+          <option value="2">二の巻（漢検9級）</option>
+          <option value="3">三の巻（漢検8級）</option>
+          <option value="4">四の巻（漢検7級）</option>
+          <option value="5">五の巻（漢検6級）</option>
+          <option value="6">六の巻（漢検5級）</option>
+          <option value="7">七の巻（漢検4級）</option>
+          <option value="8">八の巻（漢検3級）</option>
+          <option value="9">九の巻（漢検準2〜2級）</option>
+          <option value="10">奥の巻（漢検準1〜1級）</option>
+        </select>
+      </div>
+      <div class="btns-row">
+        <button id="startBtn"   class="wf-btn primary">開始</button>
+        <button id="pauseBtn"   class="wf-btn warn"    disabled>⏸ 停止</button>
+        <button id="restartBtn" class="wf-btn plain"   disabled>🔁 再試</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== QUESTION ===== -->
+  <div class="qsection panel" style="animation-delay:.08s">
+
+    <!-- タイマー行 -->
+    <div class="timer-row">
+      <div>
+        <div class="qtitle">□に入る漢字を選べ</div>
+        <div class="qdesc">選択肢は四つ。素早く答えよ。</div>
+      </div>
+      <div class="timer-wrap">
+        <div class="time" id="timeLabel">0.000</div>
+        <div class="thint" id="timeHint">開始を待て</div>
+      </div>
+    </div>
+
+    <!-- 四字熟語 -->
+    <div class="idiom-wrap" aria-label="四字熟語">
+      <div class="kanji-cell" id="c0">?</div>
+      <div class="kanji-cell" id="c1">?</div>
+      <div class="kanji-cell" id="c2">?</div>
+      <div class="kanji-cell blank" id="c3">□</div>
+    </div>
+
+    <!-- 選択肢 -->
+    <div class="choices" aria-label="選択肢">
+      <button class="choice" id="ch0" disabled>?</button>
+      <button class="choice" id="ch1" disabled>?</button>
+      <button class="choice" id="ch2" disabled>?</button>
+      <button class="choice" id="ch3" disabled>?</button>
+    </div>
+
+    <!-- フィードバック -->
+    <div class="feedback" id="feedback">—</div>
+  </div>
+
+  <!-- ===== PROGRESS ===== -->
+  <div class="prog-section panel" style="animation-delay:.12s">
+    <div class="prog-header">
+      <div class="prog-title">進捗</div>
+      <div class="status-label" id="statusLabel">待機中</div>
+    </div>
+    <div class="progress" id="progress"></div>
+  </div>
+
+  <!-- ===== LOG ===== -->
+  <div class="log" style="animation-delay:.16s">
+    <h3>◇ 直近の記録</h3>
+    <div id="logLines"></div>
+  </div>
+
+  <!-- ===== FOOTER ===== -->
+  <div class="footer">
+    ◈ 一時停止中は計測を止める ◈ レベルを変えると語彙が変わる ◈
+  </div>
+
+</div><!-- /wrap -->
+
+<!-- ===== RESULT OVERLAY ===== -->
+<div id="overlay" style="display:none">
+  <div class="result-card">
+    <h2>ゲーム完了</h2>
+    <div class="praise" id="praiseLabel">—</div>
+    <div class="result-big">平均 <span id="avgLabel">0.000s</span></div>
+    <div class="result-big">正答 <span id="scoreLabel">0</span> / 10</div>
+    <div class="result-detail" id="detailLabel"></div>
+    <div class="result-actions">
+      <button class="wf-btn good" id="playAgainBtn">もう一度</button>
+      <button class="wf-btn plain" id="closeOverlayBtn">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
-  /* ========= “真っ白”原因を見える化（iPhoneでも出る） ========= */
-  var errBar = document.getElementById('errBar');
-  function showErr(msg){
-    try{
-      errBar.style.display = "block";
-      errBar.innerHTML = "<b>エラー:</b> " + String(msg).replace(/</g,"&lt;").replace(/>/g,"&gt;");
-    }catch(e){}
+/* ====== エラー表示 ====== */
+var errBar = document.getElementById('errBar');
+function showErr(msg){
+  try{ errBar.style.display="block"; errBar.innerHTML="<b>エラー:</b> "+String(msg).replace(/</g,"&lt;").replace(/>/g,"&gt;"); }catch(e){}
+}
+window.addEventListener("error",function(e){ showErr(e&&e.message?e.message:"unknown"); });
+window.addEventListener("unhandledrejection",function(e){ showErr(e&&e.reason?e.reason:"rejection"); });
+
+/* ====== 桜の花びら VFX ====== */
+function sakuraAt(x,y,n){
+  var petals=["🌸","🌺","✿","❀","🍀"];
+  for(var i=0;i<n;i++){
+    (function(i){
+      setTimeout(function(){
+        var el=document.createElement("div");
+        el.className="petal";
+        el.textContent=petals[Math.floor(Math.random()*petals.length)];
+        el.style.left=(x+(Math.random()-.5)*60)+"px";
+        el.style.top=y+"px";
+        el.style.setProperty("--dx",((Math.random()-.5)*80)+"px");
+        el.style.animationDelay="0s";
+        document.body.appendChild(el);
+        setTimeout(function(){ el.remove(); },1500);
+      }, i*60);
+    })(i);
   }
-  window.addEventListener("error", function(e){
-    showErr((e && e.message) ? e.message : "unknown error");
-  });
-  window.addEventListener("unhandledrejection", function(e){
-    showErr((e && e.reason) ? e.reason : "unhandled rejection");
-  });
+}
 
-  /* ========= 1200x2400 を必ず画面内にフィット ========= */
-  var stage = document.getElementById('stage');
-  function fitStage(){
-    var W = 1200, H = 2400;
-    var vw = Math.max(1, document.documentElement.clientWidth || 0, window.innerWidth || 0);
-    var vh = Math.max(1, document.documentElement.clientHeight || 0, window.innerHeight || 0);
-    var s = Math.min(vw / W, vh / H);
-    if(!isFinite(s) || s <= 0.05) s = 0.33; // 保険
-    stage.style.transform = "scale(" + s + ")";
-  }
-  function fitStageRetry(){
-    fitStage();
-    requestAnimationFrame(fitStage);
-    setTimeout(fitStage, 50);
-    setTimeout(fitStage, 200);
-    setTimeout(fitStage, 600);
-  }
-  window.addEventListener('resize', fitStageRetry, {passive:true});
-  window.addEventListener('orientationchange', fitStageRetry, {passive:true});
-  fitStageRetry();
+/* ====== 出題データ ====== */
+var idiomsByLevel = {
+  1:["一石二鳥","大同小異","前後左右","早起早寝","右往左往","山川草木","男女平等","花鳥風月","白黒明白","千客万来","東西南北","明朗快活","安全第一","自画自賛","元気溌剌","一長一短","十中八九","千変万化","日々是好日","一心同体","一生懸命","先手必勝","温厚篤実","百発百中","一日一善","笑門来福","天真爛漫","有名無実","心身一如","一日千秋"],
+  2:["異口同音","自業自得","十人十色","温故知新","以心伝心","起死回生","晴耕雨読","臨機応変","試行錯誤","因果応報","悪戦苦闘","危機一髪","四面楚歌","一進一退","心機一転","有言実行","優柔不断","自給自足","七転八起","一念発起","電光石火","五里霧中","千差万別","質実剛健","一攫千金","明鏡止水","栄枯盛衰","日進月歩","切磋琢磨","朝令暮改"],
+  3:["百花繚乱","千載一遇","前代未聞","紆余曲折","一網打尽","疑心暗鬼","百戦錬磨","縦横無尽","泰然自若","勧善懲悪","意味深長","終始一貫","表裏一体","空前絶後","一喜一憂","自縄自縛","針小棒大","付和雷同","優勝劣敗","因循姑息","無為徒食","門外不出","疾風迅雷","融通無碍","精励恪勤","巧言令色","臥薪嘗胆","捲土重来","一瀉千里","粉骨砕身"],
+  4:["毀誉褒貶","慇懃無礼","支離滅裂","曖昧模糊","跋扈跳梁","欣喜雀躍","確乎不抜","隔靴掻痒","空理空論","玉石混交","一朝一夕","余裕綽々","乾坤一擲","同床異夢","公明正大","軽挙妄動","多岐亡羊","一寸光陰","破顔一笑","九死一生","千思万考","情状酌量","明哲保身","外柔内剛","枝葉末節","剛毅木訥","虚心坦懐","一部始終","終日一誠","衆寡敵せず"],
+  5:["改過自新","朝三暮四","大器晩成","一罰百戒","不言実行","率先垂範","一騎当千","千軍万馬","一刀両断","百折不撓","公明正大","温故知新","臨機応変","試行錯誤","因果応報","明鏡止水","切磋琢磨","栄枯盛衰","日進月歩","百花繚乱","千載一遇","前代未聞","紆余曲折","一網打尽","百戦錬磨","疑心暗鬼","自縄自縛","付和雷同","針小棒大","玉石混交"],
+  6:["剛毅木訥","虚心坦懐","独立独歩","平身低頭","正々堂々","精進潔斎","温厚篤実","泰然自若","明鏡止水","勧善懲悪","切磋琢磨","栄枯盛衰","日進月歩","縦横無尽","百戦錬磨","臥薪嘗胆","捲土重来","因循姑息","無為徒食","門外不出","疾風迅雷","融通無碍","精励恪勤","一瀉千里","乾坤一擲","確乎不抜","隔靴掻痒","空理空論","九死一生","粉骨砕身"],
+  7:["韋編三絶","孤軍奮闘","当意即妙","融通無碍","乾坤一擲","粉骨砕身","九死一生","情状酌量","枝葉末節","玉石混交","同床異夢","軽挙妄動","多岐亡羊","外柔内剛","明哲保身","一寸光陰","余裕綽々","破顔一笑","確乎不抜","隔靴掻痒","空理空論","慇懃無礼","欣喜雀躍","跋扈跳梁","曖昧模糊","毀誉褒貶","支離滅裂","終日一誠","剣呑浮躁","衆寡敵せず"],
+  8:["鶏口牛後","巧言令色","孟母三遷","異端邪説","百折不撓","一意専心","独立独歩","虚心坦懐","剛毅木訥","平身低頭","正々堂々","精進潔斎","泰然自若","明鏡止水","切磋琢磨","栄枯盛衰","日進月歩","縦横無尽","百戦錬磨","臥薪嘗胆","捲土重来","自縄自縛","付和雷同","針小棒大","因循姑息","無為徒食","門外不出","疾風迅雷","融通無碍","一瀉千里"],
+  9:["刮目相待","一視同仁","天下無双","豪放磊落","聡明叡智","慧眼識見","百戦錬磨","縦横無尽","明鏡止水","泰然自若","切磋琢磨","栄枯盛衰","日進月歩","百花繚乱","千載一遇","前代未聞","紆余曲折","一網打尽","自縄自縛","付和雷同","針小棒大","因循姑息","無為徒食","門外不出","疾風迅雷","融通無碍","精励恪勤","乾坤一擲","確乎不抜","空理空論"],
+  10:["欣喜雀躍","曖昧模糊","慇懃無礼","捲土重来","跋扈跳梁","毀誉褒貶","支離滅裂","確乎不抜","隔靴掻痒","乾坤一擲","多岐亡羊","韋編三絶","聡明叡智","慧眼識見","豪放磊落","天下無双","刮目相待","一視同仁","空理空論","玉石混交","粉骨砕身","九死一生","情状酌量","枝葉末節","同床異夢","軽挙妄動","終日一誠","余裕綽々","衆寡敵せず","剣呑浮躁"]
+};
 
-  /* ========= ゲーム本体（ES6機能を避けて安定化） ========= */
+/* ====== DOM refs ====== */
+function $id(id){ return document.getElementById(id); }
+var levelSelect=$id('levelSelect'), startBtn=$id('startBtn'), pauseBtn=$id('pauseBtn'), restartBtn=$id('restartBtn');
+var qIndexEl=$id('qIndex'), lvlLabelEl=$id('lvlLabel'), timeLabel=$id('timeLabel'), timeHint=$id('timeHint');
+var feedback=$id('feedback'), statusLabel=$id('statusLabel');
+var cells=[$id('c0'),$id('c1'),$id('c2'),$id('c3')];
+var choiceBtns=[$id('ch0'),$id('ch1'),$id('ch2'),$id('ch3')];
+var progressEl=$id('progress'), logLines=$id('logLines');
+var overlay=$id('overlay'), avgLabel=$id('avgLabel'), scoreLabel=$id('scoreLabel');
+var praiseLabel=$id('praiseLabel'), detailLabel=$id('detailLabel');
+var playAgainBtn=$id('playAgainBtn'), closeOverlayBtn=$id('closeOverlayBtn');
 
-  // 出題データ（各レベル30個）
-  var idiomsByLevel = {
-    1: [
-      "一石二鳥","大同小異","前後左右","早起早寝","右往左往","山川草木","男女平等","花鳥風月","白黒明白","千客万来",
-      "東西南北","明朗快活","安全第一","自画自賛","元気溌剌","一長一短","十中八九","千変万化","日々是好日","一心同体",
-      "一生懸命","先手必勝","温厚篤実","百発百中","一日一善","笑門来福","天真爛漫","有名無実","心身一如","一日千秋"
-    ],
-    2: [
-      "異口同音","自業自得","十人十色","温故知新","以心伝心","起死回生","晴耕雨読","臨機応変","試行錯誤","因果応報",
-      "悪戦苦闘","危機一髪","四面楚歌","一進一退","心機一転","有言実行","優柔不断","自給自足","七転八起","一念発起",
-      "電光石火","五里霧中","千差万別","質実剛健","一攫千金","明鏡止水","栄枯盛衰","日進月歩","切磋琢磨","朝令暮改"
-    ],
-    3: [
-      "百花繚乱","千載一遇","前代未聞","紆余曲折","一網打尽","疑心暗鬼","百戦錬磨","縦横無尽","泰然自若","勧善懲悪",
-      "意味深長","終始一貫","表裏一体","空前絶後","一喜一憂","自縄自縛","針小棒大","付和雷同","優勝劣敗","因循姑息",
-      "無為徒食","門外不出","疾風迅雷","融通無碍","精励恪勤","巧言令色","臥薪嘗胆","捲土重来","一瀉千里","粉骨砕身"
-    ],
-    4: [
-      "毀誉褒貶","慇懃無礼","支離滅裂","曖昧模糊","跋扈跳梁","欣喜雀躍","衆寡敵せず","確乎不抜","隔靴掻痒","空理空論",
-      "玉石混交","一朝一夕","余裕綽々","乾坤一擲","終日一誠","一部始終","同床異夢","公明正大","軽挙妄動","多岐亡羊",
-      "一寸光陰","破顔一笑","九死一生","千思万考","情状酌量","明哲保身","外柔内剛","枝葉末節","剛毅木訥","虚心坦懐"
-    ],
-    5: [
-      "改過自新","朝三暮四","大器晩成","一罰百戒","不言実行","率先垂範","一騎当千","千軍万馬","一刀両断","百折不撓",
-      "玉石混交","公明正大","温故知新","臨機応変","試行錯誤","因果応報","明鏡止水","切磋琢磨","栄枯盛衰","日進月歩",
-      "百花繚乱","千載一遇","前代未聞","紆余曲折","一網打尽","百戦錬磨","疑心暗鬼","自縄自縛","付和雷同","針小棒大"
-    ],
-    6: [
-      "剛毅木訥","虚心坦懐","独立独歩","平身低頭","正々堂々","精進潔斎","温厚篤実","泰然自若","明鏡止水","勧善懲悪",
-      "切磋琢磨","栄枯盛衰","日進月歩","縦横無尽","百戦錬磨","臥薪嘗胆","捲土重来","因循姑息","無為徒食","門外不出",
-      "疾風迅雷","融通無碍","精励恪勤","一瀉千里","乾坤一擲","確乎不抜","隔靴掻痒","空理空論","九死一生","粉骨砕身"
-    ],
-    7: [
-      "剣呑浮躁","韋編三絶","孤軍奮闘","当意即妙","融通無碍","乾坤一擲","粉骨砕身","九死一生","情状酌量","枝葉末節",
-      "玉石混交","同床異夢","軽挙妄動","多岐亡羊","外柔内剛","明哲保身","一寸光陰","終日一誠","余裕綽々","破顔一笑",
-      "確乎不抜","隔靴掻痒","空理空論","衆寡敵せず","慇懃無礼","欣喜雀躍","跋扈跳梁","曖昧模糊","毀誉褒貶","支離滅裂"
-    ],
-    8: [
-      "鶏口牛後","巧言令色","孟母三遷","異端邪説","百折不撓","一意専心","独立独歩","虚心坦懐","剛毅木訥","平身低頭",
-      "正々堂々","精進潔斎","泰然自若","明鏡止水","切磋琢磨","栄枯盛衰","日進月歩","縦横無尽","百戦錬磨","臥薪嘗胆",
-      "捲土重来","自縄自縛","付和雷同","針小棒大","因循姑息","無為徒食","門外不出","疾風迅雷","融通無碍","一瀉千里"
-    ],
-    9: [
-      "刮目相待","一視同仁","天下無双","豪放磊落","聡明叡智","慧眼識見","百戦錬磨","縦横無尽","明鏡止水","泰然自若",
-      "切磋琢磨","栄枯盛衰","日進月歩","百花繚乱","千載一遇","前代未聞","紆余曲折","一網打尽","自縄自縛","付和雷同",
-      "針小棒大","因循姑息","無為徒食","門外不出","疾風迅雷","融通無碍","精励恪勤","乾坤一擲","確乎不抜","空理空論"
-    ],
-    10:[
-      "欣喜雀躍","曖昧模糊","衆寡敵せず","慇懃無礼","捲土重来","跋扈跳梁","毀誉褒貶","支離滅裂","確乎不抜","隔靴掻痒",
-      "乾坤一擲","多岐亡羊","韋編三絶","剣呑浮躁","聡明叡智","慧眼識見","豪放磊落","天下無双","刮目相待","一視同仁",
-      "空理空論","玉石混交","粉骨砕身","九死一生","情状酌量","枝葉末節","同床異夢","軽挙妄動","終日一誠","余裕綽々"
-    ]
-  };
+/* ====== Game state ====== */
+var level=1, gameActive=false, paused=false;
+var questions=[], qIdx=0, blankPos=3, correctChar="", results=[];
+var qStart=0, pauseStart=0, pausedAccum=0, rafId=0;
 
-  function $id(id){ return document.getElementById(id); }
+function fmtSec(ms){ return (ms/1000).toFixed(3)+"s"; }
 
-  var levelSelect = $id('levelSelect');
-  var startBtn = $id('startBtn');
-  var pauseBtn = $id('pauseBtn');
-  var restartBtn = $id('restartBtn');
+function shuffle(arr){
+  var a=arr.slice();
+  for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i];a[i]=a[j];a[j]=t; }
+  return a;
+}
 
-  var qIndexEl = $id('qIndex');
-  var lvlLabelEl = $id('lvlLabel');
-  var timeLabel = $id('timeLabel');
-  var timeHint = $id('timeHint');
-  var feedback = $id('feedback');
-  var statusLabel = $id('statusLabel');
+function buildKanjiPool(lv){
+  var set={}, src=idiomsByLevel[lv]||[];
+  for(var i=0;i<src.length;i++){ var s=src[i]; for(var k=0;k<s.length;k++) set[s.charAt(k)]=true; }
+  delete set["□"];
+  var out=[]; for(var key in set){ if(set.hasOwnProperty(key)) out.push(key); }
+  return out;
+}
 
-  var cells = [$id('c0'),$id('c1'),$id('c2'),$id('c3')];
-  var choiceBtns = [$id('ch0'),$id('ch1'),$id('ch2'),$id('ch3')];
+function pick10(lv){
+  var src=idiomsByLevel[lv]||[];
+  if(!src.length) return [];
+  var bag=shuffle(src), out=[];
+  while(out.length<10){ if(!bag.length) bag=shuffle(src); out.push(bag.pop()); }
+  return out;
+}
 
-  var progressEl = $id('progress');
-  var logLines = $id('logLines');
+function makeChoices(lv,correct){
+  var pool=buildKanjiPool(lv), set=[correct];
+  while(set.length<4){ var p=pool[Math.floor(Math.random()*pool.length)]; if(p&&p!==correct&&set.indexOf(p)===-1) set.push(p); }
+  return shuffle(set);
+}
 
-  var overlay = $id('overlay');
-  var avgLabel = $id('avgLabel');
-  var scoreLabel = $id('scoreLabel');
-  var praiseLabel = $id('praiseLabel');
-  var detailLabel = $id('detailLabel');
-  var playAgainBtn = $id('playAgainBtn');
-  var closeOverlayBtn = $id('closeOverlayBtn');
+function setChoicesEnabled(on){
+  for(var i=0;i<choiceBtns.length;i++) choiceBtns[i].disabled=!on;
+}
 
-  var level = 1;
-  var gameActive = false;
-  var paused = false;
-
-  var questions = [];
-  var qIdx = 0;
-  var blankPos = 3;
-  var correctChar = "";
-  var results = [];
-
-  var qStart = 0;
-  var pauseStart = 0;
-  var pausedAccum = 0;
-  var rafId = 0;
-
-  function fmtSec(ms){ return (ms/1000).toFixed(3) + "s"; }
-
-  function shuffle(arr){
-    var a = arr.slice();
-    for(var i=a.length-1;i>0;i--){
-      var j = Math.floor(Math.random()*(i+1));
-      var t=a[i]; a[i]=a[j]; a[j]=t;
+function renderProgress(){
+  progressEl.innerHTML="";
+  for(var i=0;i<10;i++){
+    var d=document.createElement('div');
+    d.className="dot"+(i===qIdx&&gameActive?" now":"");
+    d.textContent=String(i+1);
+    if(results[i]){
+      d.className="dot"+(results[i].correct?" done":" bad");
     }
-    return a;
+    progressEl.appendChild(d);
   }
+}
 
-  function buildKanjiPool(lv){
-    var set = {};
-    var src = idiomsByLevel[lv] || [];
-    for(var i=0;i<src.length;i++){
-      var s = src[i];
-      // サロゲート対策：Array.from を使わず、for..ofも使わず、簡易（四字熟語なので基本1文字＝1コード単位でOK）
-      for(var k=0;k<s.length;k++){
-        set[s.charAt(k)] = true;
-      }
-    }
-    delete set["□"];
-    var out = [];
-    for(var key in set){ if(set.hasOwnProperty(key)) out.push(key); }
-    return out;
-  }
+function pushLog(text){
+  var line=document.createElement('div');
+  line.className="log-line"; line.textContent=text;
+  logLines.insertBefore(line,logLines.firstChild);
+  while(logLines.children.length>10) logLines.removeChild(logLines.lastChild);
+}
 
-  function pick10(lv){
-    var src = idiomsByLevel[lv] || [];
-    if(!src.length) return [];
-    var bag = shuffle(src);
-    var out = [];
-    while(out.length < 10){
-      if(!bag.length) bag = shuffle(src);
-      out.push(bag.pop());
-    }
-    return out;
-  }
+function stopRAF(){ if(rafId){ cancelAnimationFrame(rafId); rafId=0; } }
 
-  function makeChoices(lv, correct){
-    var pool = buildKanjiPool(lv);
-    var set = [correct];
-    while(set.length < 4){
-      var pick = pool[Math.floor(Math.random()*pool.length)];
-      if(pick && pick !== correct && set.indexOf(pick) === -1) set.push(pick);
-    }
-    return shuffle(set);
-  }
+function updateTimer(){
+  if(!gameActive){ timeLabel.textContent="0.000"; return; }
+  var now=performance.now();
+  var elapsed=paused?(pauseStart-qStart-pausedAccum):(now-qStart-pausedAccum);
+  if(elapsed<0) elapsed=0;
+  timeLabel.textContent=(elapsed/1000).toFixed(3);
+  rafId=requestAnimationFrame(updateTimer);
+}
 
-  function setChoicesEnabled(on){
-    for(var i=0;i<choiceBtns.length;i++){
-      choiceBtns[i].disabled = !on;
-    }
-  }
-
-  function renderProgress(){
-    progressEl.innerHTML = "";
-    for(var i=0;i<10;i++){
-      var d = document.createElement('div');
-      d.className = "dot";
-      d.textContent = String(i+1);
-      if(i === qIdx && gameActive) d.className += " now";
-      if(results[i]){
-        d.className = "dot";
-        if(results[i].correct) d.className += " done";
-        else d.className += " bad";
-      }
-      progressEl.appendChild(d);
-    }
-  }
-
-  function pushLog(text){
-    var line = document.createElement('div');
-    line.className = "line";
-    line.textContent = text;
-    logLines.insertBefore(line, logLines.firstChild);
-    while(logLines.children.length > 10){
-      logLines.removeChild(logLines.lastChild);
-    }
-  }
-
-  function stopRAF(){
-    if(rafId){ cancelAnimationFrame(rafId); rafId = 0; }
-  }
-  function updateTimer(){
-    if(!gameActive){ timeLabel.textContent = "0.000s"; return; }
-    var now = performance.now();
-    var elapsed = now - qStart - pausedAccum;
-    if(paused) elapsed = pauseStart - qStart - pausedAccum;
-    if(elapsed < 0) elapsed = 0;
-    timeLabel.textContent = fmtSec(elapsed);
-    rafId = requestAnimationFrame(updateTimer);
-  }
-
-  function setIdiomCells(idiom){
-    // 4文字前提
-    for(var i=0;i<4;i++){
-      if(i === blankPos){
-        cells[i].textContent = "□";
-        if(cells[i].className.indexOf("blank") === -1) cells[i].className += " blank";
-      }else{
-        cells[i].textContent = idiom.charAt(i);
-        cells[i].className = cells[i].className.replace(/\bblank\b/g,"").trim();
-      }
-    }
-  }
-
-  function startQuestion(){
-    feedback.textContent = "—";
-    feedback.style.color = "var(--muted)";
-
-    var idiom = questions[qIdx];
-    blankPos = Math.floor(Math.random()*4);
-    correctChar = idiom.charAt(blankPos);
-
-    setIdiomCells(idiom);
-
-    var choices = makeChoices(level, correctChar);
-    for(var i=0;i<choiceBtns.length;i++){
-      var btn = choiceBtns[i];
-      btn.textContent = choices[i];
-      btn.className = btn.className.replace(/\bgood\b|\bbad\b/g,"").trim() || "choice";
-      btn.disabled = false;
-    }
-
-    paused = false;
-    pauseBtn.textContent = "⏸ 一時停止";
-    pausedAccum = 0;
-    qStart = performance.now();
-    timeHint.textContent = "計測中（回答すると次の問題へ）";
-    stopRAF(); updateTimer();
-
-    qIndexEl.textContent = String(qIdx+1);
-    lvlLabelEl.textContent = String(level);
-    statusLabel.textContent = "出題中";
-    renderProgress();
-  }
-
-  function praiseByAvgSeconds(avgSec){
-    if(avgSec <= 2.0) return "漢字の神かよ！";
-    if(avgSec <= 4.0) return "漢字博士って呼ばれない？";
-    if(avgSec <= 6.0) return "読書好きそう";
-    if(avgSec <= 8.0) return "眠かっただけ・・・だよね？";
-    return "眠かっただけ・・・だよね？";
-  }
-
-  function finishGame(){
-    gameActive = false;
-    setChoicesEnabled(false);
-    pauseBtn.disabled = true;
-    restartBtn.disabled = false;
-    startBtn.disabled = false;
-    levelSelect.disabled = false;
-    stopRAF();
-    statusLabel.textContent = "完了";
-
-    var total = 0;
-    for(var i=0;i<results.length;i++){
-      var r = results[i];
-      if(r && typeof r.timeMs === "number") total += r.timeMs;
-    }
-    var avg = total / 10;
-    var avgSec = avg / 1000;
-
-    var correctCount = 0;
-    for(var j=0;j<results.length;j++){
-      if(results[j] && results[j].correct) correctCount++;
-    }
-
-    avgLabel.textContent = fmtSec(avg);
-    scoreLabel.textContent = String(correctCount);
-    praiseLabel.textContent = praiseByAvgSeconds(avgSec);
-
-    var lines = [];
-    var posName = ["1文字目","2文字目","3文字目","4文字目"];
-    for(var k=0;k<results.length;k++){
-      var rr = results[k];
-      var mark = rr.correct ? "○" : "×";
-      lines.push(
-        (k+1) + ". " + rr.idiom +
-        "（空白:" + posName[rr.blankPos] + "） " +
-        "回答:" + rr.answer + " " + mark + "  " + fmtSec(rr.timeMs)
-      );
-    }
-    detailLabel.textContent = "（レベル：Lv." + level + "）\n\n" + lines.join("\n");
-
-    overlay.style.display = "flex";
-  }
-
-  function answer(choiceChar){
-    if(!gameActive || paused) return;
-
-    var now = performance.now();
-    var elapsed = now - qStart - pausedAccum;
-
-    var idiom = questions[qIdx];
-    var ok = (choiceChar === correctChar);
-
-    for(var i=0;i<choiceBtns.length;i++){
-      var btn = choiceBtns[i];
-      btn.disabled = true;
-      var t = btn.textContent;
-      btn.className = "choice";
-      if(t === correctChar) btn.className += " good";
-      if(t === choiceChar && !ok) btn.className += " bad";
-    }
-
-    feedback.textContent = ok ? "正解！" : ("不正解…（正解：" + correctChar + "）");
-    feedback.style.color = ok ? "var(--good)" : "var(--bad)";
-
-    results[qIdx] = { idiom: idiom, blankPos: blankPos, answer: choiceChar, correct: ok, timeMs: Math.max(0, elapsed) };
-    renderProgress();
-    pushLog((qIdx+1) + "/10  " + (ok ? "○" : "×") + "  " + idiom + "  " + fmtSec(elapsed));
-
-    stopRAF();
-    setTimeout(function(){
-      qIdx++;
-      if(qIdx >= 10) finishGame();
-      else startQuestion();
-    }, 520);
-  }
-
-  function startGame(){
-    level = parseInt(levelSelect.value, 10);
-    if(!level || level < 1) level = 1;
-    lvlLabelEl.textContent = String(level);
-
-    questions = pick10(level);
-    results = new Array(10);
-    for(var i=0;i<10;i++) results[i] = null;
-    qIdx = 0;
-
-    gameActive = true;
-    paused = false;
-    overlay.style.display = "none";
-
-    startBtn.disabled = true;
-    restartBtn.disabled = false;
-    pauseBtn.disabled = false;
-    levelSelect.disabled = true;
-
-    statusLabel.textContent = "開始";
-    logLines.innerHTML = "";
-    renderProgress();
-    startQuestion();
-  }
-
-  function restartGame(){
-    if(!levelSelect.disabled){
-      level = parseInt(levelSelect.value, 10);
-      if(!level || level < 1) level = 1;
-    }
-    levelSelect.value = String(level);
-    startGame();
-  }
-
-  function togglePause(){
-    if(!gameActive) return;
-    if(!paused){
-      paused = true;
-      pauseStart = performance.now();
-      pauseBtn.textContent = "▶ 再開";
-      timeHint.textContent = "一時停止中（再開でカウント再開）";
-      statusLabel.textContent = "一時停止";
-      renderProgress();
+function setIdiomCells(idiom){
+  for(var i=0;i<4;i++){
+    cells[i].className="kanji-cell";
+    if(i===blankPos){
+      cells[i].textContent="□";
+      cells[i].className+=" blank";
     }else{
-      var now = performance.now();
-      pausedAccum += (now - pauseStart);
-      paused = false;
-      pauseBtn.textContent = "⏸ 一時停止";
-      timeHint.textContent = "計測中（回答すると次の問題へ）";
-      statusLabel.textContent = "出題中";
-      renderProgress();
+      cells[i].textContent=idiom.charAt(i);
     }
   }
+}
 
-  // iPhoneのタップ取りこぼし対策（click + touchend、重複ガード）
-  function bindTap(el, fn){
-    var lock = false;
-    el.addEventListener("click", function(e){ fn(e); }, false);
-    el.addEventListener("touchend", function(e){
-      if(lock) return;
-      lock = true;
-      fn(e);
-      setTimeout(function(){ lock = false; }, 250);
-    }, {passive:true});
+function startQuestion(){
+  feedback.textContent="—"; feedback.className="feedback";
+  var idiom=questions[qIdx];
+  blankPos=Math.floor(Math.random()*4);
+  correctChar=idiom.charAt(blankPos);
+  setIdiomCells(idiom);
+
+  var choices=makeChoices(level,correctChar);
+  for(var i=0;i<choiceBtns.length;i++){
+    var btn=choiceBtns[i];
+    btn.textContent=choices[i];
+    btn.className="choice";
+    btn.disabled=false;
   }
 
-  levelSelect.addEventListener('change', function(){ lvlLabelEl.textContent = String(levelSelect.value); }, {passive:true});
-  bindTap(startBtn, startGame);
-  bindTap(restartBtn, restartGame);
-  bindTap(pauseBtn, togglePause);
+  paused=false;
+  pauseBtn.textContent="⏸ 停止";
+  pausedAccum=0;
+  qStart=performance.now();
+  timeHint.textContent="計測中 — 回答で次へ";
+  stopRAF(); updateTimer();
+
+  qIndexEl.textContent=String(qIdx+1);
+  lvlLabelEl.textContent=String(level);
+  statusLabel.textContent="出題中";
+  renderProgress();
+}
+
+function praiseByAvg(avgSec){
+  if(avgSec<=2.0) return "漢字の神！";
+  if(avgSec<=4.0) return "漢字博士！";
+  if(avgSec<=6.0) return "なかなかの腕前";
+  if(avgSec<=8.0) return "もう少し精進を";
+  return "稽古が足りぬ…";
+}
+
+function finishGame(){
+  gameActive=false;
+  setChoicesEnabled(false);
+  pauseBtn.disabled=true; restartBtn.disabled=false; startBtn.disabled=false; levelSelect.disabled=false;
+  stopRAF(); statusLabel.textContent="完了";
+
+  var total=0;
+  for(var i=0;i<results.length;i++) if(results[i]&&typeof results[i].timeMs==="number") total+=results[i].timeMs;
+  var avg=total/10, correctCount=0;
+  for(var j=0;j<results.length;j++) if(results[j]&&results[j].correct) correctCount++;
+
+  avgLabel.textContent=fmtSec(avg);
+  scoreLabel.textContent=String(correctCount);
+  praiseLabel.textContent=praiseByAvg(avg/1000);
+
+  var lines=[], pos=["一文字目","二文字目","三文字目","四文字目"];
+  for(var k=0;k<results.length;k++){
+    var rr=results[k];
+    lines.push((k+1)+". "+rr.idiom+"（□:"+ pos[rr.blankPos]+"）回答:"+rr.answer+(rr.correct?" ○":" ×")+"  "+fmtSec(rr.timeMs));
+  }
+  detailLabel.textContent="（Lv."+level+"）\n\n"+lines.join("\n");
+  overlay.style.display="flex";
+
+  /* 桜吹雪 */
+  var cx=window.innerWidth/2, cy=window.innerHeight/2;
+  sakuraAt(cx,cy,12);
+}
+
+function answer(choiceChar){
+  if(!gameActive||paused) return;
+  var now=performance.now();
+  var elapsed=now-qStart-pausedAccum;
+  var idiom=questions[qIdx];
+  var ok=(choiceChar===correctChar);
 
   for(var i=0;i<choiceBtns.length;i++){
-    (function(btn){
-      bindTap(btn, function(){ answer(btn.textContent); });
-    })(choiceBtns[i]);
+    var btn=choiceBtns[i]; btn.disabled=true;
+    var t=btn.textContent; btn.className="choice";
+    if(t===correctChar) btn.className+=" good";
+    if(t===choiceChar&&!ok) btn.className+=" bad";
   }
 
-  bindTap(playAgainBtn, function(){
-    overlay.style.display = "none";
-    levelSelect.value = String(level);
-    startGame();
-  });
-  bindTap(closeOverlayBtn, function(){ overlay.style.display = "none"; });
+  feedback.textContent=ok?"正解！":"不正解…（正解："+correctChar+"）";
+  feedback.className="feedback"+(ok?" ok":" bad");
 
+  if(ok){
+    /* 正解セルをポップ */
+    cells[blankPos].textContent=correctChar;
+    cells[blankPos].className="kanji-cell cell-pop";
+    var cellRect=cells[blankPos].getBoundingClientRect();
+    sakuraAt(cellRect.left+cellRect.width/2, cellRect.top+cellRect.height/2, 5);
+  }
+
+  results[qIdx]={idiom:idiom, blankPos:blankPos, answer:choiceChar, correct:ok, timeMs:Math.max(0,elapsed)};
   renderProgress();
-  setChoicesEnabled(false);
-  pauseBtn.disabled = true;
-  restartBtn.disabled = true;
+  pushLog((qIdx+1)+"/10  "+(ok?"○":"×")+"  "+idiom+"  "+fmtSec(elapsed));
 
-  // 最後にもう一回フィット（iOSで初期値ズレ対策）
-  setTimeout(fitStageRetry, 0);
+  stopRAF();
+  setTimeout(function(){ qIdx++; if(qIdx>=10) finishGame(); else startQuestion(); }, 540);
+}
+
+function startGame(){
+  level=parseInt(levelSelect.value,10)||1;
+  lvlLabelEl.textContent=String(level);
+  questions=pick10(level);
+  results=new Array(10); for(var i=0;i<10;i++) results[i]=null;
+  qIdx=0; gameActive=true; paused=false;
+  overlay.style.display="none";
+  startBtn.disabled=true; restartBtn.disabled=false; pauseBtn.disabled=false; levelSelect.disabled=true;
+  statusLabel.textContent="開始"; logLines.innerHTML="";
+  renderProgress(); startQuestion();
+}
+
+function restartGame(){
+  if(!levelSelect.disabled){ level=parseInt(levelSelect.value,10)||1; }
+  levelSelect.value=String(level);
+  startGame();
+}
+
+function togglePause(){
+  if(!gameActive) return;
+  if(!paused){
+    paused=true; pauseStart=performance.now();
+    pauseBtn.textContent="▶ 再開";
+    timeHint.textContent="一時停止中";
+    statusLabel.textContent="停止中";
+    renderProgress();
+  }else{
+    pausedAccum+=(performance.now()-pauseStart);
+    paused=false;
+    pauseBtn.textContent="⏸ 停止";
+    timeHint.textContent="計測中 — 回答で次へ";
+    statusLabel.textContent="出題中";
+    renderProgress();
+  }
+}
+
+/* ====== bindTap (click + touchend guard) ====== */
+function bindTap(el,fn){
+  var lock=false;
+  el.addEventListener("click",function(e){ fn(e); },false);
+  el.addEventListener("touchend",function(e){
+    if(lock) return; lock=true; fn(e);
+    setTimeout(function(){ lock=false; },250);
+  },{passive:true});
+}
+
+levelSelect.addEventListener('change',function(){ lvlLabelEl.textContent=String(levelSelect.value); },{passive:true});
+bindTap(startBtn,startGame);
+bindTap(restartBtn,restartGame);
+bindTap(pauseBtn,togglePause);
+
+for(var i=0;i<choiceBtns.length;i++){
+  (function(btn){ bindTap(btn,function(){ answer(btn.textContent); }); })(choiceBtns[i]);
+}
+
+bindTap(playAgainBtn,function(){ overlay.style.display="none"; levelSelect.value=String(level); startGame(); });
+bindTap(closeOverlayBtn,function(){ overlay.style.display="none"; });
+
+renderProgress();
+setChoicesEnabled(false);
+pauseBtn.disabled=true;
+restartBtn.disabled=true;
+
 })();
 </script>
 </body>
